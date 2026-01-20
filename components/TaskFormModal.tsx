@@ -5,7 +5,6 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Pressable,
 } from 'react-native';
 import { Text, View } from '@/components/Themed';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -92,9 +91,9 @@ export function TaskFormModal({
         if (prev.length === 1) return prev;
         return prev.filter((a) => a !== attr);
       }
-      // Максимум 2 атрибута
-      if (prev.length >= 2) {
-        return [prev[1], attr];
+      // Максимум 3 атрибута
+      if (prev.length >= 3) {
+        return [prev[1], prev[2], attr];
       }
       return [...prev, attr];
     });
@@ -238,7 +237,7 @@ export function TaskFormModal({
 
             {/* Attributes */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Качает атрибуты (1-2)</Text>
+              <Text style={styles.label}>Качает атрибуты (1-3)</Text>
               <View style={styles.attributesGrid}>
                 {ATTRIBUTE_LIST.map((attr) => (
                   <TouchableOpacity
