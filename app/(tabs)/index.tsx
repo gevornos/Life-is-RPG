@@ -1,34 +1,48 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { StyleSheet, ScrollView } from 'react-native';
 import { Text, View } from '@/components/Themed';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { ATTRIBUTES, ATTRIBUTE_LIST } from '@/constants/attributes';
-import { calculateLevelProgress } from '@/constants/gameConfig';
-
-// Временные данные для отображения (позже заменим на данные из store)
-const mockCharacter = {
-  name: 'Герой',
-  level: 5,
-  xp: 350,
-  hp: 85,
-  max_hp: 100,
-  gold: 150,
-  strength: 8,
-  health: 6,
-  intelligence: 12,
-  creativity: 4,
-  discipline: 10,
-};
-
-const mockMonster = {
-  name: 'Гоблин-лентяй',
-  hp: 45,
-  max_hp: 80,
-  weakness: ['discipline', 'strength'],
-};
+import { calculateXPForLevel } from '@/constants/gameConfig';
+import { useCharacterStore } from '@/store/characterStore';
+import { useMonsterStore } from '@/store/monsterStore';
 
 export default function CharacterScreen() {
-  const levelProgress = calculateLevelProgress(mockCharacter.xp, mockCharacter.level);
+  const { character, createCharacter } = useCharacterStore();
+  const { currentMonster, spawnDailyMonster } = useMonsterStore();
+
+  // Создаём персонажа при первом запуске если его нет
+  useEffect(() => {
+    if (!character) {
+      createCharacter('Герой', 'local-user');
+    }
+  }, [character, createCharacter]);
+
+  // Спавним монстра если его нет
+  useEffect(() => {
+    if (character && !currentMonster) {
+      spawnDailyMonster(character.user_id);
+    }
+  }, [character, currentMonster, spawnDailyMonster]);
+
+  // Пока персонаж не создан - показываем загрузку
+  if (!character) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text>Загрузка...</Text>
+      </View>
+    );
+  }
+
+  // Рассчитываем XP для текущего уровня
+  // XP в текущем уровне = общий XP минус XP потраченный на предыдущие уровни
+  let xpForPreviousLevels = 0;
+  for (let i = 1; i < character.level; i++) {
+    xpForPreviousLevels += calculateXPForLevel(i);
+  }
+  const xpInCurrentLevel = character.xp - xpForPreviousLevels;
+  const xpNeededForLevel = calculateXPForLevel(character.level);
+  const levelProgress = xpInCurrentLevel / xpNeededForLevel;
 
   return (
     <ScrollView style={styles.container}>
@@ -37,8 +51,8 @@ export default function CharacterScreen() {
         <View style={styles.avatarContainer}>
           <MaterialCommunityIcons name="account-circle" size={100} color="#6C5CE7" />
         </View>
-        <Text style={styles.name}>{mockCharacter.name}</Text>
-        <Text style={styles.level}>Уровень {mockCharacter.level}</Text>
+        <Text style={styles.name}>{character.name}</Text>
+        <Text style={styles.level}>Уровень {character.level}</Text>
       </View>
 
       {/* Полоски HP и XP */}
@@ -51,16 +65,16 @@ export default function CharacterScreen() {
               style={[
                 styles.barFill,
                 styles.hpBar,
-                { width: `${(mockCharacter.hp / mockCharacter.max_hp) * 100}%` },
+                { width: `${(character.hp / character.max_hp) * 100}%` },
               ]}
             />
           </View>
           <Text style={styles.barText}>
-            {mockCharacter.hp}/{mockCharacter.max_hp}
+            {character.hp}/{character.max_hp}
           </Text>
         </View>
 
-        {/* XP Bar */}
+        {/* XP Bar - показываем текущий/нужный для уровня */}
         <View style={styles.barRow}>
           <MaterialCommunityIcons name="star" size={24} color="#F39C12" />
           <View style={styles.barBackground}>
@@ -68,17 +82,17 @@ export default function CharacterScreen() {
               style={[
                 styles.barFill,
                 styles.xpBar,
-                { width: `${levelProgress * 100}%` },
+                { width: `${Math.min(levelProgress * 100, 100)}%` },
               ]}
             />
           </View>
-          <Text style={styles.barText}>{Math.round(levelProgress * 100)}%</Text>
+          <Text style={styles.barText}>{xpInCurrentLevel}/{xpNeededForLevel}</Text>
         </View>
 
         {/* Gold */}
         <View style={styles.goldRow}>
           <MaterialCommunityIcons name="gold" size={24} color="#F1C40F" />
-          <Text style={styles.goldText}>{mockCharacter.gold}</Text>
+          <Text style={styles.goldText}>{character.gold}</Text>
         </View>
       </View>
 
@@ -94,7 +108,7 @@ export default function CharacterScreen() {
                 color={attr.color}
               />
               <Text style={styles.attributeValue}>
-                {mockCharacter[attr.key as keyof typeof mockCharacter]}
+                {character[attr.key as keyof typeof character]}
               </Text>
               <Text style={styles.attributeName}>{attr.name}</Text>
             </View>
@@ -105,32 +119,47 @@ export default function CharacterScreen() {
       {/* Текущий монстр */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Сегодняшний монстр</Text>
-        <View style={styles.monsterCard}>
-          <View style={styles.monsterHeader}>
-            <MaterialCommunityIcons name="ghost" size={40} color="#9B59B6" />
-            <View style={styles.monsterInfo}>
-              <Text style={styles.monsterName}>{mockMonster.name}</Text>
-              <Text style={styles.monsterWeakness}>
-                Слабость: {mockMonster.weakness.map((w) => ATTRIBUTES[w as keyof typeof ATTRIBUTES]?.name).join(', ')}
+        {currentMonster && !currentMonster.defeated ? (
+          <View style={styles.monsterCard}>
+            <View style={styles.monsterHeader}>
+              <MaterialCommunityIcons name="ghost" size={40} color="#9B59B6" />
+              <View style={styles.monsterInfo}>
+                <Text style={styles.monsterName}>{currentMonster.name}</Text>
+                <Text style={styles.monsterWeakness}>
+                  Слабость: {currentMonster.weakness.map((w) => ATTRIBUTES[w]?.name).join(', ')}
+                </Text>
+              </View>
+            </View>
+            {/* Monster HP Bar */}
+            <View style={styles.monsterHpContainer}>
+              <View style={styles.barBackground}>
+                <View
+                  style={[
+                    styles.barFill,
+                    styles.monsterHpBar,
+                    { width: `${(currentMonster.hp / currentMonster.max_hp) * 100}%` },
+                  ]}
+                />
+              </View>
+              <Text style={styles.monsterHpText}>
+                {currentMonster.hp}/{currentMonster.max_hp} HP
               </Text>
             </View>
-          </View>
-          {/* Monster HP Bar */}
-          <View style={styles.monsterHpContainer}>
-            <View style={styles.barBackground}>
-              <View
-                style={[
-                  styles.barFill,
-                  styles.monsterHpBar,
-                  { width: `${(mockMonster.hp / mockMonster.max_hp) * 100}%` },
-                ]}
-              />
-            </View>
-            <Text style={styles.monsterHpText}>
-              {mockMonster.hp}/{mockMonster.max_hp} HP
+            <Text style={styles.monsterReward}>
+              Награда: {currentMonster.reward_xp} XP, {currentMonster.reward_gold} золота
             </Text>
           </View>
-        </View>
+        ) : currentMonster?.defeated ? (
+          <View style={styles.monsterDefeated}>
+            <MaterialCommunityIcons name="trophy" size={40} color="#F39C12" />
+            <Text style={styles.defeatedText}>Монстр побеждён!</Text>
+            <Text style={styles.defeatedSubtext}>Завтра появится новый</Text>
+          </View>
+        ) : (
+          <View style={styles.noMonster}>
+            <Text>Монстр скоро появится...</Text>
+          </View>
+        )}
       </View>
     </ScrollView>
   );
@@ -266,5 +295,39 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 4,
     fontSize: 14,
+  },
+  monsterReward: {
+    textAlign: 'center',
+    marginTop: 8,
+    fontSize: 12,
+    opacity: 0.7,
+  },
+  monsterDefeated: {
+    alignItems: 'center',
+    padding: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(243, 156, 18, 0.1)',
+  },
+  defeatedText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginTop: 8,
+    color: '#F39C12',
+  },
+  defeatedSubtext: {
+    fontSize: 14,
+    opacity: 0.7,
+    marginTop: 4,
+  },
+  noMonster: {
+    padding: 24,
+    alignItems: 'center',
+    borderRadius: 12,
+    backgroundColor: 'rgba(108, 92, 231, 0.1)',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
