@@ -162,7 +162,7 @@ export default function HabitsScreen() {
       </ScrollView>
 
       <TouchableOpacity
-        style={[styles.addButton, { bottom: 20 + insets.bottom }]}
+        style={[styles.addButton, { bottom: 80 + insets.bottom }]}
         onPress={handleAddNew}
       >
         <MaterialCommunityIcons name="plus" size={28} color="#FFF" />

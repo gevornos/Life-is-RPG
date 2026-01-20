@@ -20,6 +20,7 @@ export interface Character {
   hp: number;
   max_hp: number;
   gold: number;
+  gems: number; // Алмазы - премиум валюта
   strength: number;
   health: number;
   intelligence: number;

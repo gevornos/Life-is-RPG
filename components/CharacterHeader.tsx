@@ -28,48 +28,63 @@ export function CharacterHeader({ onPress }: CharacterHeaderProps) {
 
   return (
     <TouchableOpacity
-      style={[styles.container, { paddingTop: insets.top + 8 }]}
+      style={[styles.container, { paddingTop: insets.top + 12 }]}
       onPress={onPress}
       activeOpacity={0.8}
     >
-      {/* Левая часть: Аватар */}
-      <View style={styles.avatarContainer}>
-        <MaterialCommunityIcons name="account-circle" size={50} color="#6C5CE7" />
+      {/* Левая часть: Аватар, Имя + Уровень */}
+      <View style={styles.leftSection}>
+        <MaterialCommunityIcons name="account-circle" size={60} color="#6C5CE7" />
+        <View style={styles.nameRow}>
+          <Text style={styles.name} numberOfLines={1}>{character.name}</Text>
+          <Text style={styles.level}>, Ур. {character.level}</Text>
+        </View>
       </View>
 
-      {/* Центральная часть: Полоски HP и XP */}
-      <View style={styles.barsContainer}>
+      {/* Центральная часть: Полоски HP и XP с центрированными счетчиками */}
+      <View style={styles.centerSection}>
         {/* HP Bar */}
-        <View style={styles.barRow}>
-          <MaterialCommunityIcons name="heart" size={16} color="#E74C3C" />
-          <View style={styles.barBackground}>
-            <View style={[styles.barFill, styles.hpBar, { width: `${hpPercent}%` }]} />
+        <View style={styles.statRow}>
+          <View style={styles.iconContainer}>
+            <MaterialCommunityIcons name="heart" size={14} color="#E74C3C" />
           </View>
-          <Text style={styles.barText}>
-            {character.hp}/{character.max_hp}
-          </Text>
+          <View style={styles.barWrapper}>
+            <View style={styles.barBackground}>
+              <View style={[styles.barFill, styles.hpBar, { width: `${hpPercent}%` }]} />
+            </View>
+            <Text style={styles.barTextCentered}>
+              {character.hp}/{character.max_hp}
+            </Text>
+          </View>
         </View>
 
         {/* XP Bar */}
-        <View style={styles.barRow}>
-          <MaterialCommunityIcons name="star" size={16} color="#F39C12" />
-          <View style={styles.barBackground}>
-            <View style={[styles.barFill, styles.xpBar, { width: `${xpPercent}%` }]} />
+        <View style={styles.statRow}>
+          <View style={styles.iconContainer}>
+            <MaterialCommunityIcons name="star" size={14} color="#F39C12" />
           </View>
-          <Text style={styles.barText}>
-            {xpInCurrentLevel}/{xpNeededForLevel}
-          </Text>
+          <View style={styles.barWrapper}>
+            <View style={styles.barBackground}>
+              <View style={[styles.barFill, styles.xpBar, { width: `${xpPercent}%` }]} />
+            </View>
+            <Text style={styles.barTextCentered}>
+              {xpInCurrentLevel}/{xpNeededForLevel}
+            </Text>
+          </View>
         </View>
       </View>
 
-      {/* Правая часть: Уровень и золото */}
-      <View style={styles.statsContainer}>
-        <View style={styles.statRow}>
-          <Text style={styles.levelText}>Ур. {character.level}</Text>
-        </View>
-        <View style={styles.statRow}>
-          <MaterialCommunityIcons name="gold" size={14} color="#F1C40F" />
+      {/* Правая часть: Золото и Алмазы */}
+      <View style={styles.rightSection}>
+        {/* Золото */}
+        <View style={styles.currencyRow}>
+          <MaterialCommunityIcons name="gold" size={16} color="#F1C40F" />
           <Text style={styles.goldText}>{character.gold}</Text>
+        </View>
+        {/* Алмазы */}
+        <View style={styles.currencyRow}>
+          <MaterialCommunityIcons name="diamond-stone" size={16} color="#3498DB" />
+          <Text style={styles.gemsText}>{character.gems}</Text>
         </View>
       </View>
     </TouchableOpacity>
@@ -81,33 +96,56 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
-    paddingBottom: 8,
+    paddingBottom: 12,
     backgroundColor: '#1a1a2e',
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255,255,255,0.1)',
+    gap: 12,
   },
-  avatarContainer: {
-    marginRight: 8,
+  leftSection: {
+    alignItems: 'center',
+    width: 80,
   },
-  barsContainer: {
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  name: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  level: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#6C5CE7',
+  },
+  centerSection: {
     flex: 1,
-    gap: 4,
+    gap: 8,
   },
-  barRow: {
+  statRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
   },
-  barBackground: {
+  iconContainer: {
+    width: 18,
+    alignItems: 'center',
+  },
+  barWrapper: {
     flex: 1,
-    height: 8,
+    position: 'relative',
+  },
+  barBackground: {
+    height: 14,
     backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 4,
+    borderRadius: 7,
     overflow: 'hidden',
   },
   barFill: {
     height: '100%',
-    borderRadius: 4,
+    borderRadius: 7,
   },
   hpBar: {
     backgroundColor: '#E74C3C',
@@ -115,29 +153,39 @@ const styles = StyleSheet.create({
   xpBar: {
     backgroundColor: '#F39C12',
   },
-  barText: {
-    fontSize: 11,
-    minWidth: 50,
-    textAlign: 'right',
+  barTextCentered: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    fontSize: 10,
+    fontWeight: '600',
+    textAlign: 'center',
+    lineHeight: 14,
+    color: '#FFF',
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
-  statsContainer: {
-    marginLeft: 8,
-    alignItems: 'flex-end',
-    gap: 2,
+  rightSection: {
+    gap: 6,
   },
-  statRow: {
+  currencyRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
-  },
-  levelText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#6C5CE7',
+    gap: 4,
   },
   goldText: {
     fontSize: 12,
     fontWeight: '600',
     color: '#F1C40F',
+    minWidth: 40,
+  },
+  gemsText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#3498DB',
+    minWidth: 40,
   },
 });

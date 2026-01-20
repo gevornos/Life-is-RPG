@@ -91,6 +91,7 @@ export const INITIAL_CHARACTER_STATS = {
   hp: 100,
   max_hp: 100,
   gold: 0,
+  gems: 0, // Алмазы - премиум валюта
   strength: 1,
   health: 1,
   intelligence: 1,
