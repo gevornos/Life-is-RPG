@@ -6,6 +6,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ATTRIBUTES } from '@/constants/attributes';
 import { useTasksStore } from '@/store/tasksStore';
 import { TaskFormModal } from '@/components/TaskFormModal';
+import { CharacterHeader } from '@/components/CharacterHeader';
+import { CharacterModal } from '@/components/CharacterModal';
 import { Task, AttributeType, TaskDifficulty } from '@/types';
 
 const DIFFICULTY_CONFIG = {
@@ -92,6 +94,7 @@ export default function TasksScreen() {
   const { tasks, addTask, updateTask, deleteTask, completeTask, uncompleteTask, getActiveTasks, getCompletedTasks } = useTasksStore();
   const [modalVisible, setModalVisible] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [characterModalVisible, setCharacterModalVisible] = useState(false);
   const [filter, setFilter] = useState<'all' | 'active' | 'completed'>('active');
 
   const handleToggle = (task: Task) => {
@@ -152,6 +155,9 @@ export default function TasksScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Плашка персонажа сверху */}
+      <CharacterHeader onPress={() => setCharacterModalVisible(true)} />
+
       {/* Фильтры */}
       <View style={styles.filterContainer}>
         {(['active', 'all', 'completed'] as const).map((f) => (
@@ -217,6 +223,12 @@ export default function TasksScreen() {
           difficulty: editingTask.difficulty,
         } : undefined}
         isEditing={!!editingTask}
+      />
+
+      {/* Модалка с информацией о персонаже */}
+      <CharacterModal
+        visible={characterModalVisible}
+        onClose={() => setCharacterModalVisible(false)}
       />
     </View>
   );

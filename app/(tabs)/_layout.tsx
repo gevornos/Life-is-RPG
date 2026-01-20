@@ -30,6 +30,7 @@ export default function TabLayout() {
           backgroundColor: Colors[colorScheme ?? 'light'].background,
         },
         headerTintColor: Colors[colorScheme ?? 'light'].text,
+        headerShown: false, // Скрываем стандартный header, будем показывать свой
       }}
     >
       <Tabs.Screen
@@ -47,17 +48,17 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Персонаж',
-          tabBarIcon: ({ color }) => <TabBarIcon name="sword-cross" color={color} />,
-        }}
-      />
-      <Tabs.Screen
         name="tasks"
         options={{
           title: 'Задачи',
           tabBarIcon: ({ color }) => <TabBarIcon name="format-list-checks" color={color} />,
+        }}
+      />
+      {/* Скрываем вкладку index, но оставляем файл для редиректа */}
+      <Tabs.Screen
+        name="index"
+        options={{
+          href: null, // Скрываем из табов
         }}
       />
     </Tabs>

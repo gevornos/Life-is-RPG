@@ -6,6 +6,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ATTRIBUTES } from '@/constants/attributes';
 import { useDailiesStore } from '@/store/dailiesStore';
 import { TaskFormModal } from '@/components/TaskFormModal';
+import { CharacterHeader } from '@/components/CharacterHeader';
+import { CharacterModal } from '@/components/CharacterModal';
 import { Daily, AttributeType, TaskDifficulty } from '@/types';
 
 function DailyItem({ daily, onToggle, onPress }: {
@@ -80,6 +82,7 @@ export default function DailiesScreen() {
   const { dailies, addDaily, updateDaily, deleteDaily, completeDaily, uncompleteDaily } = useDailiesStore();
   const [modalVisible, setModalVisible] = useState(false);
   const [editingDaily, setEditingDaily] = useState<Daily | null>(null);
+  const [characterModalVisible, setCharacterModalVisible] = useState(false);
 
   const handleToggle = (daily: Daily) => {
     if (daily.completed_today) {
@@ -134,6 +137,9 @@ export default function DailiesScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Плашка персонажа сверху */}
+      <CharacterHeader onPress={() => setCharacterModalVisible(true)} />
+
       <View style={styles.header}>
         <View style={styles.progressContainer}>
           <Text style={styles.progressText}>
@@ -190,6 +196,12 @@ export default function DailiesScreen() {
           difficulty: 'medium',
         } : undefined}
         isEditing={!!editingDaily}
+      />
+
+      {/* Модалка с информацией о персонаже */}
+      <CharacterModal
+        visible={characterModalVisible}
+        onClose={() => setCharacterModalVisible(false)}
       />
     </View>
   );

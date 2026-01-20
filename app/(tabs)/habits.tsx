@@ -4,6 +4,8 @@ import { Text, View } from '@/components/Themed';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TaskFormModal } from '@/components/TaskFormModal';
+import { CharacterHeader } from '@/components/CharacterHeader';
+import { CharacterModal } from '@/components/CharacterModal';
 import { useHabitsStore } from '@/store/habitsStore';
 import { Habit, AttributeType, TaskDifficulty, HabitType } from '@/types';
 import { ATTRIBUTES } from '@/constants/attributes';
@@ -73,6 +75,7 @@ export default function HabitsScreen() {
   const { habits, addHabit, updateHabit, deleteHabit, incrementPositive, incrementNegative } = useHabitsStore();
   const [modalVisible, setModalVisible] = useState(false);
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
+  const [characterModalVisible, setCharacterModalVisible] = useState(false);
 
   const handlePositive = (id: string) => {
     incrementPositive(id);
@@ -129,6 +132,9 @@ export default function HabitsScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Плашка персонажа сверху */}
+      <CharacterHeader onPress={() => setCharacterModalVisible(true)} />
+
       <View style={styles.header}>
         <Text style={styles.description}>
           Отмечай привычки и качай атрибуты
@@ -162,6 +168,7 @@ export default function HabitsScreen() {
         <MaterialCommunityIcons name="plus" size={28} color="#FFF" />
       </TouchableOpacity>
 
+      {/* Модалка с формой задания */}
       <TaskFormModal
         visible={modalVisible}
         onClose={() => setModalVisible(false)}
@@ -177,6 +184,12 @@ export default function HabitsScreen() {
           type: editingHabit.type,
         } : undefined}
         isEditing={!!editingHabit}
+      />
+
+      {/* Модалка с информацией о персонаже */}
+      <CharacterModal
+        visible={characterModalVisible}
+        onClose={() => setCharacterModalVisible(false)}
       />
     </View>
   );
