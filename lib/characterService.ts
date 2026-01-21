@@ -90,7 +90,9 @@ export const characterService = {
 
     if (!serverCharacter) {
       // Создаем нового персонажа на сервере
-      return await this.createCharacter(localCharacter);
+      // Убираем id, created_at, updated_at - Supabase сам их сгенерирует
+      const { id, created_at, updated_at, ...characterData } = localCharacter;
+      return await this.createCharacter(characterData);
     }
 
     // Мерджим данные:
