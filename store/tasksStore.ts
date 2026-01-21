@@ -9,9 +9,10 @@ interface TasksState {
 
   // Actions
   setTasks: (tasks: Task[]) => void;
-  addTask: (task: Omit<Task, 'id' | 'created_at' | 'completed' | 'completed_at'>) => void;
+  addTask: (task: Omit<Task, 'id' | 'created_at' | 'completed' | 'completed_at' | 'order'>) => void;
   updateTask: (id: string, updates: Partial<Task>) => void;
   deleteTask: (id: string) => void;
+  reorderTasks: (reorderedTasks: Task[]) => void;
 
   // Game actions
   completeTask: (id: string) => void;
@@ -41,11 +42,14 @@ export const useTasksStore = create<TasksState>((set, get) => ({
   setTasks: (tasks) => set({ tasks }),
 
   addTask: (taskData) => {
+    const { tasks } = get();
+    const maxOrder = tasks.length > 0 ? Math.max(...tasks.map(t => t.order || 0)) : -1;
     const newTask: Task = {
       ...taskData,
       id: Date.now().toString(),
       completed: false,
       completed_at: undefined,
+      order: maxOrder + 1,
       created_at: new Date().toISOString(),
     };
     set((state) => ({ tasks: [...state.tasks, newTask] }));
@@ -61,6 +65,14 @@ export const useTasksStore = create<TasksState>((set, get) => ({
     set((state) => ({
       tasks: state.tasks.filter((t) => t.id !== id),
     }));
+  },
+
+  reorderTasks: (reorderedTasks) => {
+    const tasksWithNewOrder = reorderedTasks.map((task, index) => ({
+      ...task,
+      order: index,
+    }));
+    set({ tasks: tasksWithNewOrder });
   },
 
   completeTask: (id) => {

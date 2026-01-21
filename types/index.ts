@@ -41,6 +41,7 @@ export interface Habit {
   difficulty: TaskDifficulty;
   counter_up: number;
   counter_down: number;
+  order: number;
   created_at: string;
 }
 
@@ -56,6 +57,7 @@ export interface Daily {
   streak: number;
   last_completed?: string;
   completed_today: boolean;
+  order: number;
   created_at: string;
 }
 
@@ -70,6 +72,7 @@ export interface Task {
   due_date?: string;
   completed: boolean;
   completed_at?: string;
+  order: number;
   created_at: string;
 }
 

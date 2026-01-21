@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { StyleSheet, TouchableOpacity } from 'react-native';
 import { Text, View } from '@/components/Themed';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import DraggableFlatList, { ScaleDecorator, RenderItemParams } from 'react-native-draggable-flatlist';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { ATTRIBUTES } from '@/constants/attributes';
 import { useDailiesStore } from '@/store/dailiesStore';
 import { TaskFormModal } from '@/components/TaskFormModal';
@@ -79,10 +81,13 @@ function DailyItem({ daily, onToggle, onPress }: {
 
 export default function DailiesScreen() {
   const insets = useSafeAreaInsets();
-  const { dailies, addDaily, updateDaily, deleteDaily, completeDaily, uncompleteDaily } = useDailiesStore();
+  const { dailies, addDaily, updateDaily, deleteDaily, completeDaily, uncompleteDaily, reorderDailies } = useDailiesStore();
   const [modalVisible, setModalVisible] = useState(false);
   const [editingDaily, setEditingDaily] = useState<Daily | null>(null);
   const [characterModalVisible, setCharacterModalVisible] = useState(false);
+
+  // Сортируем dailies по order
+  const sortedDailies = [...dailies].sort((a, b) => (a.order || 0) - (b.order || 0));
 
   const handleToggle = (daily: Daily) => {
     if (daily.completed_today) {
@@ -133,77 +138,90 @@ export default function DailiesScreen() {
     }
   };
 
-  const completedCount = dailies.filter(d => d.completed_today).length;
+  const renderDailyItem = ({ item, drag, isActive }: RenderItemParams<Daily>) => {
+    return (
+      <ScaleDecorator>
+        <TouchableOpacity onLongPress={drag} disabled={isActive} activeOpacity={1}>
+          <DailyItem
+            daily={item}
+            onToggle={() => handleToggle(item)}
+            onPress={() => handleEdit(item)}
+          />
+        </TouchableOpacity>
+      </ScaleDecorator>
+    );
+  };
+
+  const completedCount = sortedDailies.filter(d => d.completed_today).length;
 
   return (
-    <View style={styles.container}>
-      {/* Плашка персонажа сверху */}
-      <CharacterHeader onPress={() => setCharacterModalVisible(true)} />
+    <GestureHandlerRootView style={styles.container}>
+      <View style={styles.container}>
+        {/* Плашка персонажа сверху */}
+        <CharacterHeader onPress={() => setCharacterModalVisible(true)} />
 
-      <View style={styles.header}>
-        <View style={styles.progressContainer}>
-          <Text style={styles.progressText}>
-            {completedCount} / {dailies.length} выполнено
-          </Text>
-          <View style={styles.progressBar}>
-            <View
-              style={[
-                styles.progressFill,
-                { width: dailies.length > 0 ? `${(completedCount / dailies.length) * 100}%` : '0%' },
-              ]}
-            />
+        <View style={styles.header}>
+          <View style={styles.progressContainer}>
+            <Text style={styles.progressText}>
+              {completedCount} / {sortedDailies.length} выполнено
+            </Text>
+            <View style={styles.progressBar}>
+              <View
+                style={[
+                  styles.progressFill,
+                  { width: sortedDailies.length > 0 ? `${(completedCount / sortedDailies.length) * 100}%` : '0%' },
+                ]}
+              />
+            </View>
           </View>
         </View>
-      </View>
 
-      <ScrollView style={styles.list} contentContainerStyle={{ paddingBottom: 80 }}>
-        {dailies.length === 0 ? (
+        {sortedDailies.length === 0 ? (
           <View style={styles.emptyState}>
             <MaterialCommunityIcons name="calendar-check" size={64} color="#666" />
             <Text style={styles.emptyText}>Нет ежедневных заданий</Text>
             <Text style={styles.emptySubtext}>Нажми + чтобы добавить</Text>
           </View>
         ) : (
-          dailies.map((daily) => (
-            <DailyItem
-              key={daily.id}
-              daily={daily}
-              onToggle={() => handleToggle(daily)}
-              onPress={() => handleEdit(daily)}
-            />
-          ))
+          <DraggableFlatList
+            data={sortedDailies}
+            onDragEnd={({ data }) => reorderDailies(data)}
+            keyExtractor={(item) => item.id}
+            renderItem={renderDailyItem}
+            contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 80 }}
+          />
         )}
-      </ScrollView>
 
-      <TouchableOpacity
-        style={[styles.addButton, { bottom: 80 + insets.bottom }]}
-        onPress={handleAddNew}
-      >
-        <MaterialCommunityIcons name="plus" size={28} color="#FFF" />
-      </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.addButton, { bottom: 10 + insets.bottom }]}
+          onPress={handleAddNew}
+        >
+          <MaterialCommunityIcons name="plus" size={28} color="#FFF" />
+        </TouchableOpacity>
 
-      <TaskFormModal
-        visible={modalVisible}
-        onClose={() => setModalVisible(false)}
-        onSave={handleSave}
-        onDelete={editingDaily ? handleDelete : undefined}
-        formType="daily"
-        initialData={editingDaily ? {
-          id: editingDaily.id,
-          title: editingDaily.title,
-          notes: editingDaily.notes,
-          attributes: editingDaily.attributes,
-          difficulty: 'medium',
-        } : undefined}
-        isEditing={!!editingDaily}
-      />
+        <TaskFormModal
+          visible={modalVisible}
+          onClose={() => setModalVisible(false)}
+          onSave={handleSave}
+          onDelete={editingDaily ? handleDelete : undefined}
+          formType="daily"
+          initialData={editingDaily ? {
+            id: editingDaily.id,
+            title: editingDaily.title,
+            notes: editingDaily.notes,
+            attributes: editingDaily.attributes,
+            difficulty: 'medium',
+          } : undefined}
+          isEditing={!!editingDaily}
+        />
 
-      {/* Модалка с информацией о персонаже */}
-      <CharacterModal
-        visible={characterModalVisible}
-        onClose={() => setCharacterModalVisible(false)}
-      />
-    </View>
+        {/* Модалка с информацией о персонаже */}
+        <CharacterModal
+          visible={characterModalVisible}
+          onClose={() => setCharacterModalVisible(false)}
+        />
+      </View>
+    </GestureHandlerRootView>
   );
 }
 
@@ -234,10 +252,6 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: '#27AE60',
     borderRadius: 4,
-  },
-  list: {
-    flex: 1,
-    padding: 16,
   },
   emptyState: {
     alignItems: 'center',

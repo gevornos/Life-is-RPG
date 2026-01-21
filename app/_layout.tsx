@@ -5,8 +5,10 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
+import 'react-native-gesture-handler';
 
 import { useColorScheme } from '@/components/useColorScheme';
+import { useDailyResetStore } from '@/store';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -46,10 +48,15 @@ export default function RootLayout() {
 }
 
 function RootLayoutNav() {
-  const colorScheme = useColorScheme();
+  const { checkAndResetIfNeeded } = useDailyResetStore();
+
+  // Проверяем необходимость сброса при запуске приложения
+  useEffect(() => {
+    checkAndResetIfNeeded();
+  }, []);
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={DarkTheme}>
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal' }} />

@@ -21,9 +21,10 @@ interface HabitsState {
 
   // Actions
   setHabits: (habits: Habit[]) => void;
-  addHabit: (habit: Omit<Habit, 'id' | 'created_at' | 'counter_up' | 'counter_down'>) => void;
+  addHabit: (habit: Omit<Habit, 'id' | 'created_at' | 'counter_up' | 'counter_down' | 'order'>) => void;
   updateHabit: (id: string, updates: Partial<Habit>) => void;
   deleteHabit: (id: string) => void;
+  reorderHabits: (reorderedHabits: Habit[]) => void;
 
   // Game actions
   incrementPositive: (id: string) => void;
@@ -37,11 +38,14 @@ export const useHabitsStore = create<HabitsState>((set, get) => ({
   setHabits: (habits) => set({ habits }),
 
   addHabit: (habitData) => {
+    const { habits } = get();
+    const maxOrder = habits.length > 0 ? Math.max(...habits.map(h => h.order || 0)) : -1;
     const newHabit: Habit = {
       ...habitData,
       id: Date.now().toString(),
       counter_up: 0,
       counter_down: 0,
+      order: maxOrder + 1,
       created_at: new Date().toISOString(),
     };
     set((state) => ({ habits: [...state.habits, newHabit] }));
@@ -57,6 +61,14 @@ export const useHabitsStore = create<HabitsState>((set, get) => ({
     set((state) => ({
       habits: state.habits.filter((h) => h.id !== id),
     }));
+  },
+
+  reorderHabits: (reorderedHabits) => {
+    const habitsWithNewOrder = reorderedHabits.map((habit, index) => ({
+      ...habit,
+      order: index,
+    }));
+    set({ habits: habitsWithNewOrder });
   },
 
   incrementPositive: (id) => {

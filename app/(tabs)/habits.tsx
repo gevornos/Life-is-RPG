@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { StyleSheet, TouchableOpacity } from 'react-native';
 import { Text, View } from '@/components/Themed';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import DraggableFlatList, { ScaleDecorator, RenderItemParams } from 'react-native-draggable-flatlist';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { TaskFormModal } from '@/components/TaskFormModal';
 import { CharacterHeader } from '@/components/CharacterHeader';
 import { CharacterModal } from '@/components/CharacterModal';
@@ -72,10 +74,13 @@ function HabitItem({ habit, onPositive, onNegative, onPress }: {
 
 export default function HabitsScreen() {
   const insets = useSafeAreaInsets();
-  const { habits, addHabit, updateHabit, deleteHabit, incrementPositive, incrementNegative } = useHabitsStore();
+  const { habits, addHabit, updateHabit, deleteHabit, incrementPositive, incrementNegative, reorderHabits } = useHabitsStore();
   const [modalVisible, setModalVisible] = useState(false);
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
   const [characterModalVisible, setCharacterModalVisible] = useState(false);
+
+  // Сортируем привычки по order
+  const sortedHabits = [...habits].sort((a, b) => (a.order || 0) - (b.order || 0));
 
   const handlePositive = (id: string) => {
     incrementPositive(id);
@@ -130,68 +135,81 @@ export default function HabitsScreen() {
     }
   };
 
+  const renderHabitItem = ({ item, drag, isActive }: RenderItemParams<Habit>) => {
+    return (
+      <ScaleDecorator>
+        <TouchableOpacity onLongPress={drag} disabled={isActive} activeOpacity={1}>
+          <HabitItem
+            habit={item}
+            onPositive={() => handlePositive(item.id)}
+            onNegative={() => handleNegative(item.id)}
+            onPress={() => handleEdit(item)}
+          />
+        </TouchableOpacity>
+      </ScaleDecorator>
+    );
+  };
+
   return (
-    <View style={styles.container}>
-      {/* Плашка персонажа сверху */}
-      <CharacterHeader onPress={() => setCharacterModalVisible(true)} />
+    <GestureHandlerRootView style={styles.container}>
+      <View style={styles.container}>
+        {/* Плашка персонажа сверху */}
+        <CharacterHeader onPress={() => setCharacterModalVisible(true)} />
 
-      <View style={styles.header}>
-        <Text style={styles.description}>
-          Отмечай привычки и качай атрибуты
-        </Text>
-      </View>
+        <View style={styles.header}>
+          <Text style={styles.description}>
+            Отмечай привычки и качай атрибуты
+          </Text>
+        </View>
 
-      <ScrollView style={styles.list} contentContainerStyle={{ paddingBottom: 80 }}>
-        {habits.length === 0 ? (
+        {sortedHabits.length === 0 ? (
           <View style={styles.emptyState}>
             <MaterialCommunityIcons name="checkbox-marked-circle-outline" size={64} color="#666" />
             <Text style={styles.emptyText}>Нет привычек</Text>
             <Text style={styles.emptySubtext}>Нажми + чтобы добавить</Text>
           </View>
         ) : (
-          habits.map((habit) => (
-            <HabitItem
-              key={habit.id}
-              habit={habit}
-              onPositive={() => handlePositive(habit.id)}
-              onNegative={() => handleNegative(habit.id)}
-              onPress={() => handleEdit(habit)}
-            />
-          ))
+          <DraggableFlatList
+            data={sortedHabits}
+            onDragEnd={({ data }) => reorderHabits(data)}
+            keyExtractor={(item) => item.id}
+            renderItem={renderHabitItem}
+            contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 80 }}
+          />
         )}
-      </ScrollView>
 
-      <TouchableOpacity
-        style={[styles.addButton, { bottom: 80 + insets.bottom }]}
-        onPress={handleAddNew}
-      >
-        <MaterialCommunityIcons name="plus" size={28} color="#FFF" />
-      </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.addButton, { bottom: 10 + insets.bottom }]}
+          onPress={handleAddNew}
+        >
+          <MaterialCommunityIcons name="plus" size={28} color="#FFF" />
+        </TouchableOpacity>
 
-      {/* Модалка с формой задания */}
-      <TaskFormModal
-        visible={modalVisible}
-        onClose={() => setModalVisible(false)}
-        onSave={handleSave}
-        onDelete={editingHabit ? handleDelete : undefined}
-        formType="habit"
-        initialData={editingHabit ? {
-          id: editingHabit.id,
-          title: editingHabit.title,
-          notes: editingHabit.notes,
-          attributes: editingHabit.attributes,
-          difficulty: editingHabit.difficulty,
-          type: editingHabit.type,
-        } : undefined}
-        isEditing={!!editingHabit}
-      />
+        {/* Модалка с формой задания */}
+        <TaskFormModal
+          visible={modalVisible}
+          onClose={() => setModalVisible(false)}
+          onSave={handleSave}
+          onDelete={editingHabit ? handleDelete : undefined}
+          formType="habit"
+          initialData={editingHabit ? {
+            id: editingHabit.id,
+            title: editingHabit.title,
+            notes: editingHabit.notes,
+            attributes: editingHabit.attributes,
+            difficulty: editingHabit.difficulty,
+            type: editingHabit.type,
+          } : undefined}
+          isEditing={!!editingHabit}
+        />
 
-      {/* Модалка с информацией о персонаже */}
-      <CharacterModal
-        visible={characterModalVisible}
-        onClose={() => setCharacterModalVisible(false)}
-      />
-    </View>
+        {/* Модалка с информацией о персонаже */}
+        <CharacterModal
+          visible={characterModalVisible}
+          onClose={() => setCharacterModalVisible(false)}
+        />
+      </View>
+    </GestureHandlerRootView>
   );
 }
 
@@ -208,10 +226,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     opacity: 0.7,
     textAlign: 'center',
-  },
-  list: {
-    flex: 1,
-    padding: 16,
   },
   emptyState: {
     alignItems: 'center',

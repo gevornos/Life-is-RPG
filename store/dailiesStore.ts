@@ -9,9 +9,10 @@ interface DailiesState {
 
   // Actions
   setDailies: (dailies: Daily[]) => void;
-  addDaily: (daily: Omit<Daily, 'id' | 'created_at' | 'streak' | 'completed_today' | 'last_completed'>) => void;
+  addDaily: (daily: Omit<Daily, 'id' | 'created_at' | 'streak' | 'completed_today' | 'last_completed' | 'order'>) => void;
   updateDaily: (id: string, updates: Partial<Daily>) => void;
   deleteDaily: (id: string) => void;
+  reorderDailies: (reorderedDailies: Daily[]) => void;
 
   // Game actions
   completeDaily: (id: string) => void;
@@ -38,12 +39,15 @@ export const useDailiesStore = create<DailiesState>((set, get) => ({
   setDailies: (dailies) => set({ dailies }),
 
   addDaily: (dailyData) => {
+    const { dailies } = get();
+    const maxOrder = dailies.length > 0 ? Math.max(...dailies.map(d => d.order || 0)) : -1;
     const newDaily: Daily = {
       ...dailyData,
       id: Date.now().toString(),
       streak: 0,
       completed_today: false,
       last_completed: undefined,
+      order: maxOrder + 1,
       created_at: new Date().toISOString(),
     };
     set((state) => ({ dailies: [...state.dailies, newDaily] }));
@@ -59,6 +63,14 @@ export const useDailiesStore = create<DailiesState>((set, get) => ({
     set((state) => ({
       dailies: state.dailies.filter((d) => d.id !== id),
     }));
+  },
+
+  reorderDailies: (reorderedDailies) => {
+    const dailiesWithNewOrder = reorderedDailies.map((daily, index) => ({
+      ...daily,
+      order: index,
+    }));
+    set({ dailies: dailiesWithNewOrder });
   },
 
   completeDaily: (id) => {

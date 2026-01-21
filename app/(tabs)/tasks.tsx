@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { StyleSheet, TouchableOpacity } from 'react-native';
 import { Text, View } from '@/components/Themed';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import DraggableFlatList, { ScaleDecorator, RenderItemParams } from 'react-native-draggable-flatlist';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { ATTRIBUTES } from '@/constants/attributes';
 import { useTasksStore } from '@/store/tasksStore';
 import { TaskFormModal } from '@/components/TaskFormModal';
@@ -91,11 +93,14 @@ function TaskItem({ task, onToggle, onPress }: {
 
 export default function TasksScreen() {
   const insets = useSafeAreaInsets();
-  const { tasks, addTask, updateTask, deleteTask, completeTask, uncompleteTask, getActiveTasks, getCompletedTasks } = useTasksStore();
+  const { tasks, addTask, updateTask, deleteTask, completeTask, uncompleteTask, reorderTasks } = useTasksStore();
   const [modalVisible, setModalVisible] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [characterModalVisible, setCharacterModalVisible] = useState(false);
   const [filter, setFilter] = useState<'all' | 'active' | 'completed'>('active');
+
+  // Сортируем tasks по order и фильтруем
+  const sortedTasks = [...tasks].sort((a, b) => (a.order || 0) - (b.order || 0));
 
   const handleToggle = (task: Task) => {
     if (task.completed) {
@@ -147,41 +152,55 @@ export default function TasksScreen() {
     }
   };
 
-  const filteredTasks = tasks.filter(task => {
+  const filteredTasks = sortedTasks.filter(task => {
     if (filter === 'active') return !task.completed;
     if (filter === 'completed') return task.completed;
     return true;
   });
 
+  const renderTaskItem = ({ item, drag, isActive }: RenderItemParams<Task>) => {
+    return (
+      <ScaleDecorator>
+        <TouchableOpacity onLongPress={drag} disabled={isActive} activeOpacity={1}>
+          <TaskItem
+            task={item}
+            onToggle={() => handleToggle(item)}
+            onPress={() => handleEdit(item)}
+          />
+        </TouchableOpacity>
+      </ScaleDecorator>
+    );
+  };
+
   return (
-    <View style={styles.container}>
-      {/* Плашка персонажа сверху */}
-      <CharacterHeader onPress={() => setCharacterModalVisible(true)} />
+    <GestureHandlerRootView style={styles.container}>
+      <View style={styles.container}>
+        {/* Плашка персонажа сверху */}
+        <CharacterHeader onPress={() => setCharacterModalVisible(true)} />
 
-      {/* Фильтры */}
-      <View style={styles.filterContainer}>
-        {(['active', 'all', 'completed'] as const).map((f) => (
-          <TouchableOpacity
-            key={f}
-            style={[
-              styles.filterButton,
-              filter === f && styles.filterButtonActive,
-            ]}
-            onPress={() => setFilter(f)}
-          >
-            <Text
+        {/* Фильтры */}
+        <View style={styles.filterContainer}>
+          {(['active', 'all', 'completed'] as const).map((f) => (
+            <TouchableOpacity
+              key={f}
               style={[
-                styles.filterText,
-                filter === f && styles.filterTextActive,
+                styles.filterButton,
+                filter === f && styles.filterButtonActive,
               ]}
+              onPress={() => setFilter(f)}
             >
-              {f === 'active' ? 'Активные' : f === 'completed' ? 'Выполненные' : 'Все'}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+              <Text
+                style={[
+                  styles.filterText,
+                  filter === f && styles.filterTextActive,
+                ]}
+              >
+                {f === 'active' ? 'Активные' : f === 'completed' ? 'Выполненные' : 'Все'}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
 
-      <ScrollView style={styles.list} contentContainerStyle={{ paddingBottom: 80 }}>
         {filteredTasks.length === 0 ? (
           <View style={styles.emptyState}>
             <MaterialCommunityIcons name="format-list-checks" size={64} color="#666" />
@@ -191,46 +210,45 @@ export default function TasksScreen() {
             <Text style={styles.emptySubtext}>Нажми + чтобы добавить</Text>
           </View>
         ) : (
-          filteredTasks.map((task) => (
-            <TaskItem
-              key={task.id}
-              task={task}
-              onToggle={() => handleToggle(task)}
-              onPress={() => handleEdit(task)}
-            />
-          ))
+          <DraggableFlatList
+            data={filteredTasks}
+            onDragEnd={({ data }) => reorderTasks(data)}
+            keyExtractor={(item) => item.id}
+            renderItem={renderTaskItem}
+            contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 80 }}
+          />
         )}
-      </ScrollView>
 
-      <TouchableOpacity
-        style={[styles.addButton, { bottom: 80 + insets.bottom }]}
-        onPress={handleAddNew}
-      >
-        <MaterialCommunityIcons name="plus" size={28} color="#FFF" />
-      </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.addButton, { bottom: 10 + insets.bottom }]}
+          onPress={handleAddNew}
+        >
+          <MaterialCommunityIcons name="plus" size={28} color="#FFF" />
+        </TouchableOpacity>
 
-      <TaskFormModal
-        visible={modalVisible}
-        onClose={() => setModalVisible(false)}
-        onSave={handleSave}
-        onDelete={editingTask ? handleDelete : undefined}
-        formType="task"
-        initialData={editingTask ? {
-          id: editingTask.id,
-          title: editingTask.title,
-          notes: editingTask.notes,
-          attributes: editingTask.attributes,
-          difficulty: editingTask.difficulty,
-        } : undefined}
-        isEditing={!!editingTask}
-      />
+        <TaskFormModal
+          visible={modalVisible}
+          onClose={() => setModalVisible(false)}
+          onSave={handleSave}
+          onDelete={editingTask ? handleDelete : undefined}
+          formType="task"
+          initialData={editingTask ? {
+            id: editingTask.id,
+            title: editingTask.title,
+            notes: editingTask.notes,
+            attributes: editingTask.attributes,
+            difficulty: editingTask.difficulty,
+          } : undefined}
+          isEditing={!!editingTask}
+        />
 
-      {/* Модалка с информацией о персонаже */}
-      <CharacterModal
-        visible={characterModalVisible}
-        onClose={() => setCharacterModalVisible(false)}
-      />
-    </View>
+        {/* Модалка с информацией о персонаже */}
+        <CharacterModal
+          visible={characterModalVisible}
+          onClose={() => setCharacterModalVisible(false)}
+        />
+      </View>
+    </GestureHandlerRootView>
   );
 }
 
@@ -261,10 +279,6 @@ const styles = StyleSheet.create({
   filterTextActive: {
     color: '#6C5CE7',
     fontWeight: '600',
-  },
-  list: {
-    flex: 1,
-    padding: 16,
   },
   emptyState: {
     alignItems: 'center',

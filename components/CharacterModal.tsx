@@ -6,7 +6,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ATTRIBUTES, ATTRIBUTE_LIST } from '@/constants/attributes';
 import { calculateXPForLevel } from '@/constants/gameConfig';
 import { useCharacterStore } from '@/store/characterStore';
-import { useMonsterStore } from '@/store/monsterStore';
 
 interface CharacterModalProps {
   visible: boolean;
@@ -16,19 +15,12 @@ interface CharacterModalProps {
 export function CharacterModal({ visible, onClose }: CharacterModalProps) {
   const insets = useSafeAreaInsets();
   const { character, createCharacter } = useCharacterStore();
-  const { currentMonster, spawnDailyMonster } = useMonsterStore();
 
   useEffect(() => {
     if (!character) {
       createCharacter('Герой', 'local-user');
     }
   }, [character, createCharacter]);
-
-  useEffect(() => {
-    if (character && !currentMonster) {
-      spawnDailyMonster(character.user_id);
-    }
-  }, [character, currentMonster, spawnDailyMonster]);
 
   if (!character) return null;
 
@@ -119,51 +111,6 @@ export function CharacterModal({ visible, onClose }: CharacterModalProps) {
                 </View>
               ))}
             </View>
-          </View>
-
-          {/* Текущий монстр */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Сегодняшний монстр</Text>
-            {currentMonster && !currentMonster.defeated ? (
-              <View style={styles.monsterCard}>
-                <View style={styles.monsterHeader}>
-                  <MaterialCommunityIcons name="ghost" size={40} color="#9B59B6" />
-                  <View style={styles.monsterInfo}>
-                    <Text style={styles.monsterName}>{currentMonster.name}</Text>
-                    <Text style={styles.monsterWeakness}>
-                      Слабость: {currentMonster.weakness.map((w) => ATTRIBUTES[w]?.name).join(', ')}
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.monsterHpContainer}>
-                  <View style={styles.barBackground}>
-                    <View
-                      style={[
-                        styles.barFill,
-                        styles.monsterHpBar,
-                        { width: `${(currentMonster.hp / currentMonster.max_hp) * 100}%` },
-                      ]}
-                    />
-                  </View>
-                  <Text style={styles.monsterHpText}>
-                    {currentMonster.hp}/{currentMonster.max_hp} HP
-                  </Text>
-                </View>
-                <Text style={styles.monsterReward}>
-                  Награда: {currentMonster.reward_xp} XP, {currentMonster.reward_gold} золота
-                </Text>
-              </View>
-            ) : currentMonster?.defeated ? (
-              <View style={styles.monsterDefeated}>
-                <MaterialCommunityIcons name="trophy" size={40} color="#F39C12" />
-                <Text style={styles.defeatedText}>Монстр побеждён!</Text>
-                <Text style={styles.defeatedSubtext}>Завтра появится новый</Text>
-              </View>
-            ) : (
-              <View style={styles.noMonster}>
-                <Text>Монстр скоро появится...</Text>
-              </View>
-            )}
           </View>
         </ScrollView>
       </View>
@@ -288,68 +235,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     opacity: 0.7,
     marginTop: 2,
-  },
-  monsterCard: {
-    padding: 16,
-    borderRadius: 12,
-    backgroundColor: 'rgba(155, 89, 182, 0.1)',
-  },
-  monsterHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  monsterInfo: {
-    marginLeft: 12,
-    flex: 1,
-  },
-  monsterName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  monsterWeakness: {
-    fontSize: 14,
-    opacity: 0.7,
-    marginTop: 4,
-  },
-  monsterHpContainer: {
-    marginTop: 8,
-  },
-  monsterHpBar: {
-    backgroundColor: '#9B59B6',
-  },
-  monsterHpText: {
-    textAlign: 'center',
-    marginTop: 4,
-    fontSize: 14,
-  },
-  monsterReward: {
-    textAlign: 'center',
-    marginTop: 8,
-    fontSize: 12,
-    opacity: 0.7,
-  },
-  monsterDefeated: {
-    alignItems: 'center',
-    padding: 24,
-    borderRadius: 12,
-    backgroundColor: 'rgba(243, 156, 18, 0.1)',
-  },
-  defeatedText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginTop: 8,
-    color: '#F39C12',
-  },
-  defeatedSubtext: {
-    fontSize: 14,
-    opacity: 0.7,
-    marginTop: 4,
-  },
-  noMonster: {
-    padding: 24,
-    alignItems: 'center',
-    borderRadius: 12,
-    backgroundColor: 'rgba(108, 92, 231, 0.1)',
   },
 });
