@@ -61,9 +61,12 @@ export const characterService = {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
+    // Убираем avatar - он хранится только локально
+    const { avatar, ...characterDataToUpdate } = character;
+
     const { data, error } = await supabase
       .from('characters')
-      .update(character)
+      .update(characterDataToUpdate)
       .eq('user_id', user.id)
       .select()
       .single();
@@ -90,14 +93,16 @@ export const characterService = {
 
     if (!serverCharacter) {
       // Создаем нового персонажа на сервере
-      // Убираем id, created_at, updated_at - Supabase сам их сгенерирует
-      const { id, created_at, updated_at, ...characterData } = localCharacter;
+      // Убираем id, created_at, updated_at, avatar - Supabase сам их сгенерирует
+      // avatar хранится только локально
+      const { id, created_at, updated_at, avatar, ...characterData } = localCharacter;
       return await this.createCharacter(characterData);
     }
 
     // Мерджим данные:
     // - gold и gems берем с сервера (источник истины)
     // - остальные данные (xp, level, hp, attributes, streaks) берем с клиента
+    // - avatar хранится только локально
     const mergedCharacter: Character = {
       ...localCharacter,
       id: serverCharacter.id,
@@ -106,7 +111,13 @@ export const characterService = {
       updated_at: new Date().toISOString(),
     };
 
-    // Обновляем на сервере
-    return await this.updateCharacter(mergedCharacter);
+    // Обновляем на сервере (без avatar)
+    const updatedCharacter = await this.updateCharacter(mergedCharacter);
+
+    // Возвращаем персонажа с локальным avatar
+    return {
+      ...updatedCharacter,
+      avatar: localCharacter.avatar,
+    };
   },
 };
