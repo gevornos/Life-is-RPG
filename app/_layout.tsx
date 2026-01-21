@@ -6,6 +6,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
 import 'react-native-gesture-handler';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { useColorScheme } from '@/components/useColorScheme';
 import { useDailyResetStore } from '@/store';
@@ -50,9 +51,36 @@ export default function RootLayout() {
 function RootLayoutNav() {
   const { checkAndResetIfNeeded } = useDailyResetStore();
 
-  // Проверяем необходимость сброса при запуске приложения
+  // Очистка старых битых данных и проверка сброса
   useEffect(() => {
-    checkAndResetIfNeeded();
+    const initializeApp = async () => {
+      try {
+        // Проверяем, была ли уже миграция
+        const migrationKey = 'persist_migration_v2';
+        const migrated = await AsyncStorage.getItem(migrationKey);
+
+        if (!migrated) {
+          console.log('Clearing old persisted data...');
+          // Очищаем старые данные со сломанными функциями
+          await AsyncStorage.multiRemove([
+            'habits-storage_v1',
+            'tasks-storage_v1',
+            'dailies-storage_v1',
+            'character-storage_v1',
+          ]);
+          // Помечаем, что миграция выполнена
+          await AsyncStorage.setItem(migrationKey, 'true');
+          console.log('Migration completed');
+        }
+
+        // Проверяем необходимость сброса
+        checkAndResetIfNeeded();
+      } catch (error) {
+        console.error('Error during app initialization:', error);
+      }
+    };
+
+    initializeApp();
   }, []);
 
   return (
