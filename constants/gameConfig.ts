@@ -1,17 +1,36 @@
 // Конфигурация игровой механики
 
-// XP награды за действия
+// Импортируем сгенерированные конфиги из CSV
+import xpRewardsData from './generated/xp-rewards.json';
+import levelProgressionData from './generated/level-progression.json';
+
+// Вспомогательная функция для поиска значения XP
+const getXPValue = (actionType: string, difficulty: string): number => {
+  const reward = xpRewardsData.find(
+    (r: any) => r.action_type === actionType && r.difficulty === difficulty
+  );
+  return reward?.xp_value ?? 0;
+};
+
+// XP награды за действия (загружаются из CSV)
 export const XP_REWARDS = {
-  habit_positive: 10,
-  habit_negative: -15,
-  daily_base: 20,
-  daily_streak_bonus: 2, // За каждый день серии
-  task_easy: 20,
-  task_medium: 50,
-  task_hard: 100,
+  habit_positive: getXPValue('habit', 'positive'),
+  habit_negative: getXPValue('habit', 'negative'),
+  daily_base: getXPValue('daily', 'base'),
+  daily_streak_bonus: getXPValue('daily', 'streak_bonus'),
+  task_easy: getXPValue('task', 'easy'),
+  task_medium: getXPValue('task', 'medium'),
+  task_hard: getXPValue('task', 'hard'),
   monster_defeat_min: 50,
   monster_defeat_max: 200,
 };
+
+// Прогрессия уровней (загружается из CSV)
+export const LEVEL_PROGRESSION: Array<{
+  level: number;
+  required_xp_total: number;
+  required_xp_for_level: number;
+}> = levelProgressionData;
 
 // Золото за действия (больше не начисляется автоматически за задания)
 // export const GOLD_REWARDS = {
@@ -30,39 +49,48 @@ export const PENALTIES = {
   inactive_3_days_attribute_percent: 0.05, // 5% характеристик
 };
 
-// Формула уровня: XP для уровня N = N * 100
-export const calculateXPForLevel = (level: number): number => level * 100;
+// XP для конкретного уровня (из таблицы прогрессии)
+export const calculateXPForLevel = (level: number): number => {
+  const levelData = LEVEL_PROGRESSION.find(l => l.level === level);
+  return levelData?.required_xp_for_level ?? level * 100; // Fallback на старую формулу
+};
 
-// Расчёт уровня из XP
+// Расчёт уровня из XP (используя таблицу)
 export const calculateLevelFromXP = (xp: number): number => {
-  let level = 1;
-  let totalXP = 0;
-  while (totalXP + calculateXPForLevel(level) <= xp) {
-    totalXP += calculateXPForLevel(level);
-    level++;
+  // Ищем максимальный уровень, который можно достичь с текущим XP
+  for (let i = LEVEL_PROGRESSION.length - 1; i >= 0; i--) {
+    if (xp >= LEVEL_PROGRESSION[i].required_xp_total) {
+      return LEVEL_PROGRESSION[i].level;
+    }
   }
-  return level;
+  return 1; // Минимальный уровень
 };
 
-// XP до следующего уровня
+// XP до следующего уровня (используя таблицу)
 export const calculateXPToNextLevel = (currentXP: number, currentLevel: number): number => {
-  let xpForPreviousLevels = 0;
-  for (let i = 1; i < currentLevel; i++) {
-    xpForPreviousLevels += calculateXPForLevel(i);
+  const currentLevelData = LEVEL_PROGRESSION.find(l => l.level === currentLevel);
+  const nextLevelData = LEVEL_PROGRESSION.find(l => l.level === currentLevel + 1);
+
+  if (!currentLevelData || !nextLevelData) {
+    // Fallback если уровень не найден в таблице
+    return calculateXPForLevel(currentLevel) - (currentXP - (currentLevelData?.required_xp_total ?? 0));
   }
-  const xpInCurrentLevel = currentXP - xpForPreviousLevels;
-  const xpNeededForNextLevel = calculateXPForLevel(currentLevel);
-  return xpNeededForNextLevel - xpInCurrentLevel;
+
+  return nextLevelData.required_xp_total - currentXP;
 };
 
-// Прогресс в текущем уровне (0-1)
+// Прогресс в текущем уровне (0-1, используя таблицу)
 export const calculateLevelProgress = (currentXP: number, currentLevel: number): number => {
-  let xpForPreviousLevels = 0;
-  for (let i = 1; i < currentLevel; i++) {
-    xpForPreviousLevels += calculateXPForLevel(i);
+  const currentLevelData = LEVEL_PROGRESSION.find(l => l.level === currentLevel);
+  const nextLevelData = LEVEL_PROGRESSION.find(l => l.level === currentLevel + 1);
+
+  if (!currentLevelData || !nextLevelData) {
+    return 0;
   }
-  const xpInCurrentLevel = currentXP - xpForPreviousLevels;
-  const xpNeededForLevel = calculateXPForLevel(currentLevel);
+
+  const xpInCurrentLevel = currentXP - currentLevelData.required_xp_total;
+  const xpNeededForLevel = nextLevelData.required_xp_total - currentLevelData.required_xp_total;
+
   return xpInCurrentLevel / xpNeededForLevel;
 };
 

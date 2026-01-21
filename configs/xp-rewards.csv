@@ -1,0 +1,8 @@
+action_type,difficulty,xp_value,description
+habit,positive,10,Positive habit completion
+habit,negative,-15,Negative habit action
+daily,base,20,Base daily completion reward
+daily,streak_bonus,2,Bonus per streak day
+task,easy,20,Easy task completion
+task,medium,50,Medium task completion
+task,hard,100,Hard task completion
