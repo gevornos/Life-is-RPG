@@ -126,9 +126,30 @@ export function CharacterModal({ visible, onClose }: CharacterModalProps) {
           onPress: async () => {
             setIsResetting(true);
             try {
-              // ВАЖНО: Сначала очищаем AsyncStorage, ПОТОМ выходим из аккаунта
-              // Иначе onAuthStateChange увидит старый auth_skipped флаг
-              await AsyncStorage.clear();
+              // Шаг 1: Удаляем флаг auth_skipped ПЕРЕД выходом
+              // чтобы onAuthStateChange показал экран авторизации
+              await AsyncStorage.removeItem('auth_skipped');
+
+              // Шаг 2: Вызываем функцию удаления аккаунта на сервере
+              // (пока сессия ещё активна!)
+              const { error: rpcError } = await supabase.rpc('delete_own_account');
+
+              if (rpcError) {
+                console.error('RPC error:', rpcError);
+                // Если функции нет на сервере, просто выходим
+                // (это удалит сессию и вызовет onAuthStateChange)
+                await supabase.auth.signOut();
+              }
+              // Если RPC успешен, он удалит пользователя и сессия автоматически закроется
+
+              // Шаг 3: Очищаем остальные локальные данные
+              await AsyncStorage.multiRemove([
+                'habits-storage_v1',
+                'tasks-storage_v1',
+                'dailies-storage_v1',
+                'character-storage_v1',
+                'persist_migration_v2',
+              ]);
 
               // Сбрасываем stores
               habitsStore.setHabits([]);
@@ -137,15 +158,6 @@ export function CharacterModal({ visible, onClose }: CharacterModalProps) {
 
               // Создаем нового персонажа
               createCharacter('Герой', 'local-user');
-
-              // Вызываем функцию удаления аккаунта на сервере
-              const { error: rpcError } = await supabase.rpc('delete_own_account');
-
-              if (rpcError) {
-                console.error('RPC error:', rpcError);
-                // Если функции нет на сервере, просто выходим
-                await supabase.auth.signOut();
-              }
 
               onClose();
 
