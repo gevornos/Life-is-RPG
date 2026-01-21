@@ -40,7 +40,7 @@ export function CharacterModal({ visible, onClose }: CharacterModalProps) {
   const handleResetProgress = () => {
     Alert.alert(
       'Сброс прогресса',
-      'Вы уверены? Это удалит ВСЕ локальные данные: персонажа, привычки, задачи и ежедневные задания.',
+      'Вы уверены? Это удалит ВСЕ локальные данные: персонажа, привычки, задачи и ежедневные задания. Покажется экран создания персонажа.',
       [
         {
           text: 'Отмена',
@@ -52,6 +52,8 @@ export function CharacterModal({ visible, onClose }: CharacterModalProps) {
           onPress: async () => {
             setIsResetting(true);
             try {
+              console.log('Resetting local progress...');
+
               // Очищаем AsyncStorage
               await AsyncStorage.multiRemove([
                 'habits-storage_v1',
@@ -65,11 +67,14 @@ export function CharacterModal({ visible, onClose }: CharacterModalProps) {
               tasksStore.setTasks([]);
               dailiesStore.setDailies([]);
 
-              // Создаем нового персонажа
-              createCharacter('Герой', 'local-user');
+              // НЕ создаем персонажа! Должен показаться экран создания
+              useCharacterStore.setState({ character: null });
 
-              Alert.alert('Успешно', 'Прогресс полностью сброшен!');
               onClose();
+
+              setTimeout(() => {
+                Alert.alert('Успешно', 'Прогресс полностью сброшен! Создайте нового персонажа.');
+              }, 300);
             } catch (error) {
               console.error('Reset error:', error);
               Alert.alert('Ошибка', 'Не удалось сбросить прогресс');
@@ -120,23 +125,38 @@ export function CharacterModal({ visible, onClose }: CharacterModalProps) {
           onPress: async () => {
             setIsResetting(true);
             try {
+              console.log('Step 1: Removing auth_skipped flag...');
               // Шаг 1: Удаляем флаг auth_skipped ПЕРЕД выходом
               // чтобы onAuthStateChange показал экран авторизации
               await AsyncStorage.removeItem('auth_skipped');
 
+              console.log('Step 2: Calling delete_own_account RPC...');
               // Шаг 2: Вызываем функцию удаления аккаунта на сервере
               // (пока сессия ещё активна!)
-              const { error: rpcError } = await supabase.rpc('delete_own_account');
+              const rpcPromise = supabase.rpc('delete_own_account');
+              const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('RPC timeout after 10s')), 10000)
+              );
 
-              if (rpcError) {
-                console.error('RPC error:', rpcError);
+              try {
+                const { error: rpcError } = await Promise.race([rpcPromise, timeoutPromise]) as any;
+                if (rpcError) {
+                  console.error('RPC error:', rpcError);
+                  // Продолжаем даже если RPC failed - просто выйдем из аккаунта
+                  console.warn('Continuing despite RPC error...');
+                }
+              } catch (timeoutError) {
+                console.error('RPC timeout:', timeoutError);
+                console.warn('Continuing despite timeout...');
               }
 
-              // Шаг 2.5: Явно выходим из аккаунта чтобы сработал onAuthStateChange
+              console.log('Step 3: Signing out...');
+              // Шаг 3: Явно выходим из аккаунта чтобы сработал onAuthStateChange
               // (даже если RPC успешен, нужно явно очистить локальную сессию)
               await supabase.auth.signOut();
 
-              // Шаг 3: Очищаем остальные локальные данные
+              console.log('Step 4: Clearing local storage...');
+              // Шаг 4: Очищаем остальные локальные данные
               await AsyncStorage.multiRemove([
                 'habits-storage_v1',
                 'tasks-storage_v1',
@@ -145,14 +165,16 @@ export function CharacterModal({ visible, onClose }: CharacterModalProps) {
                 'persist_migration_v2',
               ]);
 
+              console.log('Step 5: Resetting stores...');
               // Сбрасываем stores
               habitsStore.setHabits([]);
               tasksStore.setTasks([]);
               dailiesStore.setDailies([]);
 
-              // Создаем нового персонажа
-              createCharacter('Герой', 'local-user');
+              // НЕ создаем персонажа! Должен показаться экран создания
+              useCharacterStore.setState({ character: null });
 
+              console.log('Account deletion complete');
               onClose();
 
               // Показываем сообщение после закрытия модального окна
