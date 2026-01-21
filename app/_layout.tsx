@@ -11,6 +11,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useColorScheme } from '@/components/useColorScheme';
 import { useDailyResetStore } from '@/store';
 import { AuthScreen } from '@/components/AuthScreen';
+import { CharacterCreationScreen } from '@/components/CharacterCreationScreen';
 import { supabase } from '@/lib/supabase';
 import { useCharacterStore } from '@/store/characterStore';
 
@@ -53,9 +54,10 @@ export default function RootLayout() {
 
 function RootLayoutNav() {
   const { checkAndResetIfNeeded } = useDailyResetStore();
-  const { loadFromServer } = useCharacterStore();
+  const { character, loadFromServer } = useCharacterStore();
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [shouldShowAuth, setShouldShowAuth] = useState(false);
+  const [userId, setUserId] = useState<string>('local-user');
 
   // Очистка старых битых данных и проверка сброса
   useEffect(() => {
@@ -90,12 +92,14 @@ function RootLayoutNav() {
 
         if (session) {
           setIsAuthenticated(true);
+          setUserId(session.user.id);
           // Загружаем персонажа с сервера
           await loadFromServer();
         } else if (skippedAuth === 'true') {
           // Пользователь ранее пропустил авторизацию
           setIsAuthenticated(false);
           setShouldShowAuth(false);
+          setUserId('local-user');
         } else {
           // Показываем экран авторизации
           setIsAuthenticated(false);
@@ -116,10 +120,12 @@ function RootLayoutNav() {
       if (session) {
         setIsAuthenticated(true);
         setShouldShowAuth(false);
+        setUserId(session.user.id);
         await loadFromServer();
       } else {
         // Когда пользователь выходит из аккаунта
         setIsAuthenticated(false);
+        setUserId('local-user');
 
         // Проверяем, был ли пропуск авторизации
         const skippedAuth = await AsyncStorage.getItem('auth_skipped');
@@ -141,7 +147,15 @@ function RootLayoutNav() {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
       await AsyncStorage.setItem('auth_skipped', 'true');
+      setUserId('local-user');
+    } else {
+      setUserId(session.user.id);
     }
+  };
+
+  const handleCharacterCreated = () => {
+    // После создания персонажа, просто перерендерим
+    // character уже будет в store благодаря createCharacter
   };
 
   // Показываем загрузку пока проверяем авторизацию
@@ -152,6 +166,16 @@ function RootLayoutNav() {
   // Показываем экран авторизации если нужно
   if (shouldShowAuth) {
     return <AuthScreen onAuthSuccess={handleAuthSuccess} />;
+  }
+
+  // Показываем экран создания персонажа если персонаж не создан
+  if (!character) {
+    return (
+      <CharacterCreationScreen
+        userId={userId}
+        onComplete={handleCharacterCreated}
+      />
+    );
   }
 
   return (

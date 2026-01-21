@@ -37,12 +37,6 @@ export function CharacterModal({ visible, onClose }: CharacterModalProps) {
     }
   }, [visible]);
 
-  useEffect(() => {
-    if (!character) {
-      createCharacter('Герой', 'local-user');
-    }
-  }, [character, createCharacter]);
-
   const handleResetProgress = () => {
     Alert.alert(
       'Сброс прогресса',
