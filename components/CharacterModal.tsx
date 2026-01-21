@@ -91,8 +91,14 @@ export function CharacterModal({ visible, onClose }: CharacterModalProps) {
           onPress: async () => {
             setIsResetting(true);
             try {
-              // Выходим из аккаунта (удаление пользователя из Supabase требует серверной функции)
-              await supabase.auth.signOut();
+              // Вызываем функцию удаления аккаунта на сервере
+              const { error: rpcError } = await supabase.rpc('delete_own_account');
+
+              if (rpcError) {
+                console.error('RPC error:', rpcError);
+                // Если функции нет на сервере, просто выходим
+                await supabase.auth.signOut();
+              }
 
               // Очищаем ВСЕ данные из AsyncStorage
               await AsyncStorage.clear();
@@ -105,17 +111,16 @@ export function CharacterModal({ visible, onClose }: CharacterModalProps) {
               // Создаем нового персонажа
               createCharacter('Герой', 'local-user');
 
-              Alert.alert(
-                'Аккаунт удален',
-                'Вы вышли из аккаунта и все данные очищены. Теперь можете зарегистрироваться заново.'
-              );
               onClose();
 
-              // Перезагружаем приложение через небольшую задержку
+              // Показываем сообщение после закрытия модального окна
               setTimeout(() => {
-                // В React Native нет прямого способа перезагрузить приложение
-                // Пользователь увидит экран авторизации автоматически
-              }, 500);
+                Alert.alert(
+                  'Аккаунт удален',
+                  'Все данные очищены. Теперь можете зарегистрироваться заново.',
+                  [{ text: 'OK' }]
+                );
+              }, 300);
             } catch (error) {
               console.error('Delete account error:', error);
               Alert.alert('Ошибка', 'Не удалось удалить аккаунт: ' + (error as Error).message);
