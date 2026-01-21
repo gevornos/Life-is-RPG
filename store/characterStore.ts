@@ -7,14 +7,20 @@ import {
   STREAK_DAYS_FOR_ATTRIBUTE_POINT,
 } from '@/constants/gameConfig';
 import { persist } from './middleware/persist';
+import { characterService } from '@/lib/characterService';
 
 interface CharacterState {
   character: Character | null;
   isLoading: boolean;
+  isSyncing: boolean;
 
   // Actions
   setCharacter: (character: Character) => void;
   createCharacter: (name: string, userId: string) => void;
+
+  // Server sync
+  syncWithServer: () => Promise<void>;
+  loadFromServer: () => Promise<void>;
 
   // Game actions
   addXP: (amount: number) => void;
@@ -35,6 +41,7 @@ export const useCharacterStore = create<CharacterState>(
     (set, get) => ({
       character: null,
       isLoading: false,
+      isSyncing: false,
       attributeStreaks: {
         strength: 0,
         health: 0,
@@ -44,6 +51,38 @@ export const useCharacterStore = create<CharacterState>(
       },
 
   setCharacter: (character) => set({ character }),
+
+  // Загрузить персонажа с сервера
+  loadFromServer: async () => {
+    set({ isLoading: true });
+    try {
+      const serverCharacter = await characterService.fetchCharacter();
+      if (serverCharacter) {
+        set({ character: serverCharacter });
+      }
+    } catch (error) {
+      console.error('Failed to load character from server:', error);
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  // Синхронизировать локального персонажа с сервером
+  syncWithServer: async () => {
+    const { character } = get();
+    if (!character) return;
+
+    set({ isSyncing: true });
+    try {
+      const syncedCharacter = await characterService.syncCharacter(character);
+      set({ character: syncedCharacter });
+    } catch (error) {
+      console.error('Failed to sync character:', error);
+      // Не прерываем работу при ошибке синхронизации
+    } finally {
+      set({ isSyncing: false });
+    }
+  },
 
   createCharacter: (name, userId) => {
     const newCharacter: Character = {
@@ -58,7 +97,7 @@ export const useCharacterStore = create<CharacterState>(
   },
 
   addXP: (amount) => {
-    const { character } = get();
+    const { character, syncWithServer } = get();
     if (!character) return;
 
     const newXP = Math.max(0, character.xp + amount);
@@ -71,10 +110,13 @@ export const useCharacterStore = create<CharacterState>(
         level: newLevel,
       },
     });
+
+    // Синхронизируем с сервером в фоне
+    syncWithServer().catch(console.error);
   },
 
   addGold: (amount) => {
-    const { character } = get();
+    const { character, syncWithServer } = get();
     if (!character) return;
 
     set({
@@ -83,6 +125,9 @@ export const useCharacterStore = create<CharacterState>(
         gold: Math.max(0, character.gold + amount),
       },
     });
+
+    // Синхронизируем с сервером в фоне (gold - серверное поле)
+    syncWithServer().catch(console.error);
   },
 
   takeDamage: (amount) => {
@@ -117,7 +162,7 @@ export const useCharacterStore = create<CharacterState>(
   },
 
   increaseAttribute: (attribute, amount) => {
-    const { character } = get();
+    const { character, syncWithServer } = get();
     if (!character) return;
 
     set({
@@ -126,10 +171,13 @@ export const useCharacterStore = create<CharacterState>(
         [attribute]: character[attribute] + amount,
       },
     });
+
+    // Синхронизируем с сервером в фоне
+    syncWithServer().catch(console.error);
   },
 
   decreaseAttribute: (attribute, amount) => {
-    const { character } = get();
+    const { character, syncWithServer } = get();
     if (!character) return;
 
     set({
@@ -138,6 +186,9 @@ export const useCharacterStore = create<CharacterState>(
         [attribute]: Math.max(1, character[attribute] - amount),
       },
     });
+
+    // Синхронизируем с сервером в фоне
+    syncWithServer().catch(console.error);
   },
 
   incrementAttributeStreak: (attribute) => {

@@ -3,13 +3,16 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import 'react-native-reanimated';
 import 'react-native-gesture-handler';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { useColorScheme } from '@/components/useColorScheme';
 import { useDailyResetStore } from '@/store';
+import { AuthScreen } from '@/components/AuthScreen';
+import { supabase } from '@/lib/supabase';
+import { useCharacterStore } from '@/store/characterStore';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -50,6 +53,9 @@ export default function RootLayout() {
 
 function RootLayoutNav() {
   const { checkAndResetIfNeeded } = useDailyResetStore();
+  const { loadFromServer } = useCharacterStore();
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [shouldShowAuth, setShouldShowAuth] = useState(false);
 
   // Очистка старых битых данных и проверка сброса
   useEffect(() => {
@@ -75,13 +81,70 @@ function RootLayoutNav() {
 
         // Проверяем необходимость сброса
         checkAndResetIfNeeded();
+
+        // Проверяем, пропускал ли пользователь авторизацию ранее
+        const skippedAuth = await AsyncStorage.getItem('auth_skipped');
+
+        // Проверяем авторизацию
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (session) {
+          setIsAuthenticated(true);
+          // Загружаем персонажа с сервера
+          await loadFromServer();
+        } else if (skippedAuth === 'true') {
+          // Пользователь ранее пропустил авторизацию
+          setIsAuthenticated(false);
+          setShouldShowAuth(false);
+        } else {
+          // Показываем экран авторизации
+          setIsAuthenticated(false);
+          setShouldShowAuth(true);
+        }
       } catch (error) {
         console.error('Error during app initialization:', error);
+        setIsAuthenticated(false);
       }
     };
 
     initializeApp();
   }, []);
+
+  // Подписка на изменения авторизации
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session) {
+        setIsAuthenticated(true);
+        setShouldShowAuth(false);
+        await loadFromServer();
+      } else {
+        setIsAuthenticated(false);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  const handleAuthSuccess = async () => {
+    setShouldShowAuth(false);
+    // Если пользователь пропустил, сохраняем флаг
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      await AsyncStorage.setItem('auth_skipped', 'true');
+    }
+  };
+
+  // Показываем загрузку пока проверяем авторизацию
+  if (isAuthenticated === null) {
+    return null;
+  }
+
+  // Показываем экран авторизации если нужно
+  if (shouldShowAuth) {
+    return <AuthScreen onAuthSuccess={handleAuthSuccess} />;
+  }
 
   return (
     <ThemeProvider value={DarkTheme}>
