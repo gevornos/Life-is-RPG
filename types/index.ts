@@ -54,6 +54,7 @@ export interface Daily {
   title: string;
   notes?: string;
   attributes: AttributeType[];
+  difficulty: TaskDifficulty;
   frequency: DailyFrequency;
   days_of_week?: number[]; // 0-6, где 0 = воскресенье
   streak: number;

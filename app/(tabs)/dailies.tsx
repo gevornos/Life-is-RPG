@@ -119,6 +119,7 @@ export default function DailiesScreen() {
         title: data.title,
         notes: data.notes,
         attributes: data.attributes,
+        difficulty: data.difficulty,
       });
     } else {
       addDaily({
@@ -126,6 +127,7 @@ export default function DailiesScreen() {
         title: data.title,
         notes: data.notes,
         attributes: data.attributes,
+        difficulty: data.difficulty,
         frequency: 'daily',
       });
     }
@@ -210,7 +212,7 @@ export default function DailiesScreen() {
             title: editingDaily.title,
             notes: editingDaily.notes,
             attributes: editingDaily.attributes,
-            difficulty: 'medium',
+            difficulty: editingDaily.difficulty,
           } : undefined}
           isEditing={!!editingDaily}
         />

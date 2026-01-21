@@ -39,7 +39,14 @@ export const useDailiesStore = create<DailiesState>(
       dailies: [],
       isLoading: false,
 
-  setDailies: (dailies) => set({ dailies }),
+  setDailies: (dailies) => {
+    // Миграция: добавляем difficulty для старых записей
+    const migratedDailies = dailies.map(daily => ({
+      ...daily,
+      difficulty: daily.difficulty || 'medium' as const,
+    }));
+    set({ dailies: migratedDailies });
+  },
 
   addDaily: (dailyData) => {
     const { dailies } = get();
@@ -52,6 +59,7 @@ export const useDailiesStore = create<DailiesState>(
       last_completed: undefined,
       order: maxOrder + 1,
       created_at: new Date().toISOString(),
+      difficulty: dailyData.difficulty || 'medium', // Дефолтное значение
     };
     set((state) => ({ dailies: [...state.dailies, newDaily] }));
   },
@@ -197,3 +205,17 @@ export const useDailiesStore = create<DailiesState>(
     { name: 'dailies-storage', version: 1 }
   )
 );
+
+// Миграция данных при инициализации
+setTimeout(() => {
+  const store = useDailiesStore.getState();
+  const needsMigration = store.dailies.some(daily => !daily.difficulty);
+
+  if (needsMigration) {
+    const migratedDailies = store.dailies.map(daily => ({
+      ...daily,
+      difficulty: daily.difficulty || ('medium' as const),
+    }));
+    store.setDailies(migratedDailies);
+  }
+}, 100);
