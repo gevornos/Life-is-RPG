@@ -1,0 +1,48 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Expo Start",
+      "type": "shell",
+      "command": "npx expo start",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      },
+      "runOptions": {
+        "runOn": "default"
+      }
+    },
+    {
+      "label": "Expo Start (Dev Client)",
+      "type": "shell",
+      "command": "npx expo start --dev-client",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    {
+      "label": "EAS Build (Development)",
+      "type": "shell",
+      "command": "eas build --profile development --platform android",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    {
+      "label": "EAS Build (Preview)",
+      "type": "shell",
+      "command": "eas build --profile preview --platform android",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    }
+  ]
+}

@@ -179,7 +179,7 @@ export default function HabitsScreen() {
         )}
 
         <TouchableOpacity
-          style={[styles.addButton, { bottom: 10 + insets.bottom }]}
+          style={[styles.addButton, { bottom: insets.bottom }]}
           onPress={handleAddNew}
         >
           <MaterialCommunityIcons name="plus" size={28} color="#FFF" />
@@ -228,9 +228,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   emptyState: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 60,
   },
   emptyText: {
     fontSize: 18,
