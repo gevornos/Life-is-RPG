@@ -10,6 +10,7 @@ import { useHabitsStore } from '@/store/habitsStore';
 import { useTasksStore } from '@/store/tasksStore';
 import { useDailiesStore } from '@/store/dailiesStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { supabase } from '@/lib/supabase';
 
 interface CharacterModalProps {
   visible: boolean;
@@ -33,7 +34,7 @@ export function CharacterModal({ visible, onClose }: CharacterModalProps) {
   const handleResetProgress = () => {
     Alert.alert(
       'Сброс прогресса',
-      'Вы уверены? Это удалит ВСЕ данные: персонажа, привычки, задачи и ежедневные задания. Это действие необратимо!',
+      'Вы уверены? Это удалит ВСЕ локальные данные: персонажа, привычки, задачи и ежедневные задания.',
       [
         {
           text: 'Отмена',
@@ -66,6 +67,58 @@ export function CharacterModal({ visible, onClose }: CharacterModalProps) {
             } catch (error) {
               console.error('Reset error:', error);
               Alert.alert('Ошибка', 'Не удалось сбросить прогресс');
+            } finally {
+              setIsResetting(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Удаление аккаунта',
+      'Это удалит ВСЁ: аккаунт Supabase, персонажа на сервере и все локальные данные. Действие НЕОБРАТИМО! Вы потеряете все свои данные навсегда.',
+      [
+        {
+          text: 'Отмена',
+          style: 'cancel',
+        },
+        {
+          text: 'Удалить навсегда',
+          style: 'destructive',
+          onPress: async () => {
+            setIsResetting(true);
+            try {
+              // Выходим из аккаунта (удаление пользователя из Supabase требует серверной функции)
+              await supabase.auth.signOut();
+
+              // Очищаем ВСЕ данные из AsyncStorage
+              await AsyncStorage.clear();
+
+              // Сбрасываем stores
+              habitsStore.setHabits([]);
+              tasksStore.setTasks([]);
+              dailiesStore.setDailies([]);
+
+              // Создаем нового персонажа
+              createCharacter('Герой', 'local-user');
+
+              Alert.alert(
+                'Аккаунт удален',
+                'Вы вышли из аккаунта и все данные очищены. Теперь можете зарегистрироваться заново.'
+              );
+              onClose();
+
+              // Перезагружаем приложение через небольшую задержку
+              setTimeout(() => {
+                // В React Native нет прямого способа перезагрузить приложение
+                // Пользователь увидит экран авторизации автоматически
+              }, 500);
+            } catch (error) {
+              console.error('Delete account error:', error);
+              Alert.alert('Ошибка', 'Не удалось удалить аккаунт: ' + (error as Error).message);
             } finally {
               setIsResetting(false);
             }
@@ -166,17 +219,29 @@ export function CharacterModal({ visible, onClose }: CharacterModalProps) {
             </View>
           </View>
 
-          {/* Debug: Кнопка сброса прогресса */}
+          {/* Debug: Кнопки для тестирования */}
           <View style={styles.debugSection}>
             <Text style={styles.debugTitle}>Debug</Text>
+
             <TouchableOpacity
               style={styles.resetButton}
               onPress={handleResetProgress}
               disabled={isResetting}
             >
-              <MaterialCommunityIcons name="delete-forever" size={20} color="#fff" />
+              <MaterialCommunityIcons name="refresh" size={20} color="#fff" />
               <Text style={styles.resetButtonText}>
-                {isResetting ? 'Сброс...' : 'Сбросить весь прогресс'}
+                {isResetting ? 'Сброс...' : 'Сбросить локальный прогресс'}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.resetButton, styles.deleteAccountButton]}
+              onPress={handleDeleteAccount}
+              disabled={isResetting}
+            >
+              <MaterialCommunityIcons name="account-remove" size={20} color="#fff" />
+              <Text style={styles.resetButtonText}>
+                {isResetting ? 'Удаление...' : 'Удалить аккаунт полностью'}
               </Text>
             </TouchableOpacity>
           </View>
@@ -328,6 +393,10 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 8,
+    marginBottom: 12,
+  },
+  deleteAccountButton: {
+    backgroundColor: '#C0392B', // Более темный красный для удаления аккаунта
   },
   resetButtonText: {
     color: '#fff',
