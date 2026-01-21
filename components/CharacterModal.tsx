@@ -136,11 +136,11 @@ export function CharacterModal({ visible, onClose }: CharacterModalProps) {
 
               if (rpcError) {
                 console.error('RPC error:', rpcError);
-                // Если функции нет на сервере, просто выходим
-                // (это удалит сессию и вызовет onAuthStateChange)
-                await supabase.auth.signOut();
               }
-              // Если RPC успешен, он удалит пользователя и сессия автоматически закроется
+
+              // Шаг 2.5: Явно выходим из аккаунта чтобы сработал onAuthStateChange
+              // (даже если RPC успешен, нужно явно очистить локальную сессию)
+              await supabase.auth.signOut();
 
               // Шаг 3: Очищаем остальные локальные данные
               await AsyncStorage.multiRemove([
