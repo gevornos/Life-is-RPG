@@ -1,11 +1,15 @@
-import React, { useEffect } from 'react';
-import { Modal, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Modal, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { Text, View } from '@/components/Themed';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ATTRIBUTES, ATTRIBUTE_LIST } from '@/constants/attributes';
 import { calculateXPForLevel } from '@/constants/gameConfig';
 import { useCharacterStore } from '@/store/characterStore';
+import { useHabitsStore } from '@/store/habitsStore';
+import { useTasksStore } from '@/store/tasksStore';
+import { useDailiesStore } from '@/store/dailiesStore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface CharacterModalProps {
   visible: boolean;
@@ -15,12 +19,61 @@ interface CharacterModalProps {
 export function CharacterModal({ visible, onClose }: CharacterModalProps) {
   const insets = useSafeAreaInsets();
   const { character, createCharacter } = useCharacterStore();
+  const habitsStore = useHabitsStore();
+  const tasksStore = useTasksStore();
+  const dailiesStore = useDailiesStore();
+  const [isResetting, setIsResetting] = useState(false);
 
   useEffect(() => {
     if (!character) {
       createCharacter('Герой', 'local-user');
     }
   }, [character, createCharacter]);
+
+  const handleResetProgress = () => {
+    Alert.alert(
+      'Сброс прогресса',
+      'Вы уверены? Это удалит ВСЕ данные: персонажа, привычки, задачи и ежедневные задания. Это действие необратимо!',
+      [
+        {
+          text: 'Отмена',
+          style: 'cancel',
+        },
+        {
+          text: 'Сбросить',
+          style: 'destructive',
+          onPress: async () => {
+            setIsResetting(true);
+            try {
+              // Очищаем AsyncStorage
+              await AsyncStorage.multiRemove([
+                'habits-storage_v1',
+                'tasks-storage_v1',
+                'dailies-storage_v1',
+                'character-storage_v1',
+              ]);
+
+              // Сбрасываем stores в начальное состояние
+              habitsStore.setHabits([]);
+              tasksStore.setTasks([]);
+              dailiesStore.setDailies([]);
+
+              // Создаем нового персонажа
+              createCharacter('Герой', 'local-user');
+
+              Alert.alert('Успешно', 'Прогресс полностью сброшен!');
+              onClose();
+            } catch (error) {
+              console.error('Reset error:', error);
+              Alert.alert('Ошибка', 'Не удалось сбросить прогресс');
+            } finally {
+              setIsResetting(false);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   if (!character) return null;
 
@@ -111,6 +164,21 @@ export function CharacterModal({ visible, onClose }: CharacterModalProps) {
                 </View>
               ))}
             </View>
+          </View>
+
+          {/* Debug: Кнопка сброса прогресса */}
+          <View style={styles.debugSection}>
+            <Text style={styles.debugTitle}>Debug</Text>
+            <TouchableOpacity
+              style={styles.resetButton}
+              onPress={handleResetProgress}
+              disabled={isResetting}
+            >
+              <MaterialCommunityIcons name="delete-forever" size={20} color="#fff" />
+              <Text style={styles.resetButtonText}>
+                {isResetting ? 'Сброс...' : 'Сбросить весь прогресс'}
+              </Text>
+            </TouchableOpacity>
           </View>
         </ScrollView>
       </View>
@@ -235,5 +303,36 @@ const styles = StyleSheet.create({
     fontSize: 12,
     opacity: 0.7,
     marginTop: 2,
+  },
+  debugSection: {
+    marginTop: 32,
+    marginBottom: 24,
+    padding: 16,
+    borderRadius: 12,
+    backgroundColor: 'rgba(231, 76, 60, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(231, 76, 60, 0.3)',
+  },
+  debugTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 12,
+    color: '#E74C3C',
+    opacity: 0.8,
+  },
+  resetButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#E74C3C',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+  },
+  resetButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 8,
   },
 });
