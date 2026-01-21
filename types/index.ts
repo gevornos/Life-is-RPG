@@ -26,8 +26,8 @@ export interface Character {
   intelligence: number;
   creativity: number;
   discipline: number;
-  last_active: string;
   created_at: string;
+  updated_at?: string; // Добавлено из схемы Supabase
 }
 
 // Привычка

@@ -90,7 +90,6 @@ export const useCharacterStore = create<CharacterState>(
       user_id: userId,
       name,
       ...INITIAL_CHARACTER_STATS,
-      last_active: new Date().toISOString(),
       created_at: new Date().toISOString(),
     };
     set({ character: newCharacter });
