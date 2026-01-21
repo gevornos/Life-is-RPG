@@ -4,9 +4,7 @@ import {
   INITIAL_CHARACTER_STATS,
   calculateLevelFromXP,
   XP_REWARDS,
-  GOLD_REWARDS,
-  TASKS_PER_ATTRIBUTE_POINT,
-  HABITS_PER_DISCIPLINE_POINT,
+  STREAK_DAYS_FOR_ATTRIBUTE_POINT,
 } from '@/constants/gameConfig';
 
 interface CharacterState {
@@ -25,24 +23,22 @@ interface CharacterState {
   increaseAttribute: (attribute: AttributeType, amount: number) => void;
   decreaseAttribute: (attribute: AttributeType, amount: number) => void;
 
-  // Tracking для прокачки атрибутов
-  taskCompletionCounts: Record<AttributeType, number>;
-  incrementTaskCount: (attributes: AttributeType[]) => void;
-  incrementHabitCount: () => void;
-  habitCompletionCount: number;
+  // Tracking серий для прокачки атрибутов
+  attributeStreaks: Record<AttributeType, number>;
+  incrementAttributeStreak: (attribute: AttributeType) => void;
+  resetAttributeStreak: (attribute: AttributeType) => void;
 }
 
 export const useCharacterStore = create<CharacterState>((set, get) => ({
   character: null,
   isLoading: false,
-  taskCompletionCounts: {
+  attributeStreaks: {
     strength: 0,
     health: 0,
     intelligence: 0,
     creativity: 0,
     discipline: 0,
   },
-  habitCompletionCount: 0,
 
   setCharacter: (character) => set({ character }),
 
@@ -141,32 +137,29 @@ export const useCharacterStore = create<CharacterState>((set, get) => ({
     });
   },
 
-  incrementTaskCount: (attributes) => {
-    const { taskCompletionCounts, increaseAttribute } = get();
-    const newCounts = { ...taskCompletionCounts };
+  incrementAttributeStreak: (attribute) => {
+    const { attributeStreaks, increaseAttribute } = get();
+    const newStreaks = { ...attributeStreaks };
 
-    attributes.forEach((attr) => {
-      newCounts[attr] = (newCounts[attr] || 0) + 1;
+    newStreaks[attribute] = (newStreaks[attribute] || 0) + 1;
 
-      // Проверяем, достигли ли порога для прокачки
-      if (newCounts[attr] >= TASKS_PER_ATTRIBUTE_POINT) {
-        increaseAttribute(attr, 1);
-        newCounts[attr] = 0; // Сбрасываем счётчик
-      }
-    });
+    // Если серия достигла 3 дней, награждаем атрибутом и сбрасываем
+    if (newStreaks[attribute] >= STREAK_DAYS_FOR_ATTRIBUTE_POINT) {
+      increaseAttribute(attribute, 1);
+      newStreaks[attribute] = 0;
+    }
 
-    set({ taskCompletionCounts: newCounts });
+    set({ attributeStreaks: newStreaks });
   },
 
-  incrementHabitCount: () => {
-    const { habitCompletionCount, increaseAttribute } = get();
-    const newCount = habitCompletionCount + 1;
+  resetAttributeStreak: (attribute) => {
+    const { attributeStreaks, decreaseAttribute } = get();
+    const newStreaks = { ...attributeStreaks };
 
-    if (newCount >= HABITS_PER_DISCIPLINE_POINT) {
-      increaseAttribute('discipline', 1);
-      set({ habitCompletionCount: 0 });
-    } else {
-      set({ habitCompletionCount: newCount });
-    }
+    // Сбрасываем серию и применяем штраф -1 к атрибуту
+    newStreaks[attribute] = 0;
+    decreaseAttribute(attribute, 1);
+
+    set({ attributeStreaks: newStreaks });
   },
 }));

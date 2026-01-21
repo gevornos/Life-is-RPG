@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { Task, TaskDifficulty, AttributeType } from '@/types';
-import { XP_REWARDS, GOLD_REWARDS } from '@/constants/gameConfig';
+import { XP_REWARDS } from '@/constants/gameConfig';
 import { useCharacterStore } from './characterStore';
 
 interface TasksState {
@@ -27,12 +27,6 @@ const XP_BY_DIFFICULTY: Record<TaskDifficulty, number> = {
   easy: XP_REWARDS.task_easy,
   medium: XP_REWARDS.task_medium,
   hard: XP_REWARDS.task_hard,
-};
-
-const GOLD_BY_DIFFICULTY: Record<TaskDifficulty, number> = {
-  easy: GOLD_REWARDS.task_easy,
-  medium: GOLD_REWARDS.task_medium,
-  hard: GOLD_REWARDS.task_hard,
 };
 
 export const useTasksStore = create<TasksState>((set, get) => ({
@@ -96,8 +90,11 @@ export const useTasksStore = create<TasksState>((set, get) => ({
     // Применяем награды
     const characterStore = useCharacterStore.getState();
     characterStore.addXP(XP_BY_DIFFICULTY[task.difficulty]);
-    characterStore.addGold(GOLD_BY_DIFFICULTY[task.difficulty]);
-    characterStore.incrementTaskCount(task.attributes);
+
+    // Увеличиваем серию для каждого атрибута
+    task.attributes.forEach((attr) => {
+      characterStore.incrementAttributeStreak(attr);
+    });
   },
 
   uncompleteTask: (id) => {
@@ -121,7 +118,11 @@ export const useTasksStore = create<TasksState>((set, get) => ({
     // Откатываем награды
     const characterStore = useCharacterStore.getState();
     characterStore.addXP(-XP_BY_DIFFICULTY[task.difficulty]);
-    characterStore.addGold(-GOLD_BY_DIFFICULTY[task.difficulty]);
+
+    // Сбрасываем серии и штрафуем атрибуты
+    task.attributes.forEach((attr) => {
+      characterStore.resetAttributeStreak(attr);
+    });
   },
 
   getActiveTasks: () => {

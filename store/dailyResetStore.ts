@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useDailiesStore } from './dailiesStore';
+import { useHabitsStore } from './habitsStore';
 
 const LAST_RESET_DATE_KEY = 'last_reset_date';
 
@@ -37,10 +38,12 @@ export const useDailyResetStore = create<DailyResetState>((set, get) => ({
       // Если это первый запуск или новый день
       if (!storedDate || storedDate !== today) {
         const dailiesStore = useDailiesStore.getState();
+        const habitsStore = useHabitsStore.getState();
 
         // Применяем штрафы за пропущенные ежедневные (только если был предыдущий день)
         if (storedDate) {
           dailiesStore.applyMissedPenalties();
+          habitsStore.applyMissedHabitPenalties();
         }
 
         // Сбрасываем статус выполнения

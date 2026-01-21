@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { Daily, DailyFrequency, AttributeType } from '@/types';
-import { XP_REWARDS, GOLD_REWARDS, PENALTIES } from '@/constants/gameConfig';
+import { XP_REWARDS, PENALTIES } from '@/constants/gameConfig';
 import { useCharacterStore } from './characterStore';
 
 interface DailiesState {
@@ -111,8 +111,11 @@ export const useDailiesStore = create<DailiesState>((set, get) => ({
     const characterStore = useCharacterStore.getState();
     const xpReward = XP_REWARDS.daily_base + newStreak * XP_REWARDS.daily_streak_bonus;
     characterStore.addXP(xpReward);
-    characterStore.addGold(GOLD_REWARDS.daily_base);
-    characterStore.incrementTaskCount(daily.attributes);
+
+    // Увеличиваем серию для каждого атрибута
+    daily.attributes.forEach((attr) => {
+      characterStore.incrementAttributeStreak(attr);
+    });
   },
 
   uncompleteDaily: (id) => {
@@ -137,7 +140,6 @@ export const useDailiesStore = create<DailiesState>((set, get) => ({
     const characterStore = useCharacterStore.getState();
     const xpReward = XP_REWARDS.daily_base + daily.streak * XP_REWARDS.daily_streak_bonus;
     characterStore.addXP(-xpReward);
-    characterStore.addGold(-GOLD_REWARDS.daily_base);
   },
 
   resetDailies: () => {
@@ -181,9 +183,9 @@ export const useDailiesStore = create<DailiesState>((set, get) => ({
         // Штраф XP
         characterStore.addXP(PENALTIES.daily_missed_xp);
 
-        // Штраф к характеристикам
+        // Сбрасываем серии и штрафуем атрибуты
         daily.attributes.forEach((attr) => {
-          characterStore.decreaseAttribute(attr, PENALTIES.daily_missed_attribute);
+          characterStore.resetAttributeStreak(attr);
         });
       }
     });

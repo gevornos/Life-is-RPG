@@ -32,17 +32,17 @@ function HabitItem({ habit, onPositive, onNegative, onPress }: {
       <TouchableOpacity style={styles.habitContent} onPress={onPress}>
         <Text style={styles.habitTitle}>{habit.title}</Text>
         <View style={styles.habitMeta}>
-          <View style={styles.habitCounters}>
-            {showPositive && (
-              <View style={styles.counterBadge}>
-                <MaterialCommunityIcons name="plus" size={12} color="#27AE60" />
-                <Text style={[styles.counterText, { color: '#27AE60' }]}>{habit.counter_up}</Text>
+          <View style={styles.habitStreaks}>
+            {habit.streak > 0 && (
+              <View style={styles.streakBadge}>
+                <MaterialCommunityIcons name="fast-forward" size={14} color="#27AE60" />
+                <Text style={[styles.streakText, { color: '#27AE60' }]}>{habit.streak}</Text>
               </View>
             )}
-            {showNegative && (
-              <View style={styles.counterBadge}>
-                <MaterialCommunityIcons name="minus" size={12} color="#E74C3C" />
-                <Text style={[styles.counterText, { color: '#E74C3C' }]}>{habit.counter_down}</Text>
+            {habit.negative_streak > 0 && (
+              <View style={styles.streakBadge}>
+                <MaterialCommunityIcons name="fast-forward" size={14} color="#E74C3C" />
+                <Text style={[styles.streakText, { color: '#E74C3C' }]}>{habit.negative_streak}</Text>
               </View>
             )}
           </View>
@@ -74,7 +74,7 @@ function HabitItem({ habit, onPositive, onNegative, onPress }: {
 
 export default function HabitsScreen() {
   const insets = useSafeAreaInsets();
-  const { habits, addHabit, updateHabit, deleteHabit, incrementPositive, incrementNegative, reorderHabits } = useHabitsStore();
+  const { habits, addHabit, updateHabit, deleteHabit, completeHabit, failHabit, reorderHabits } = useHabitsStore();
   const [modalVisible, setModalVisible] = useState(false);
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
   const [characterModalVisible, setCharacterModalVisible] = useState(false);
@@ -83,11 +83,11 @@ export default function HabitsScreen() {
   const sortedHabits = [...habits].sort((a, b) => (a.order || 0) - (b.order || 0));
 
   const handlePositive = (id: string) => {
-    incrementPositive(id);
+    completeHabit(id);
   };
 
   const handleNegative = (id: string) => {
-    incrementNegative(id);
+    failHabit(id);
   };
 
   const handleAddNew = () => {
@@ -273,17 +273,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 6,
   },
-  habitCounters: {
+  habitStreaks: {
     flexDirection: 'row',
+    gap: 8,
   },
-  counterBadge: {
+  streakBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 12,
+    gap: 2,
   },
-  counterText: {
-    fontSize: 12,
-    marginLeft: 2,
+  streakText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
   attributeTags: {
     flexDirection: 'row',

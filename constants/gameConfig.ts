@@ -13,14 +13,14 @@ export const XP_REWARDS = {
   monster_defeat_max: 200,
 };
 
-// Золото за действия
-export const GOLD_REWARDS = {
-  habit_positive: 2,
-  daily_base: 3,
-  task_easy: 5,
-  task_medium: 10,
-  task_hard: 20,
-};
+// Золото за действия (больше не начисляется автоматически за задания)
+// export const GOLD_REWARDS = {
+//   habit_positive: 2,
+//   daily_base: 3,
+//   task_easy: 5,
+//   task_medium: 10,
+//   task_hard: 20,
+// };
 
 // Штрафы
 export const PENALTIES = {
@@ -99,6 +99,5 @@ export const INITIAL_CHARACTER_STATS = {
   discipline: 1,
 };
 
-// Прокачка характеристик: +1 за каждые N выполненных задач
-export const TASKS_PER_ATTRIBUTE_POINT = 5;
-export const HABITS_PER_DISCIPLINE_POINT = 10;
+// Прокачка характеристик: +1 за каждые 3 дня серии для конкретного атрибута
+export const STREAK_DAYS_FOR_ATTRIBUTE_POINT = 3;

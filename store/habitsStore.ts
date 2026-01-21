@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { Habit, HabitType, TaskDifficulty } from '@/types';
-import { XP_REWARDS, GOLD_REWARDS } from '@/constants/gameConfig';
+import { XP_REWARDS } from '@/constants/gameConfig';
 import { useCharacterStore } from './characterStore';
 
 const XP_BY_DIFFICULTY: Record<TaskDifficulty, number> = {
@@ -9,26 +9,21 @@ const XP_BY_DIFFICULTY: Record<TaskDifficulty, number> = {
   hard: XP_REWARDS.habit_positive * 2,
 };
 
-const GOLD_BY_DIFFICULTY: Record<TaskDifficulty, number> = {
-  easy: GOLD_REWARDS.habit_positive,
-  medium: Math.floor(GOLD_REWARDS.habit_positive * 1.5),
-  hard: GOLD_REWARDS.habit_positive * 2,
-};
-
 interface HabitsState {
   habits: Habit[];
   isLoading: boolean;
 
   // Actions
   setHabits: (habits: Habit[]) => void;
-  addHabit: (habit: Omit<Habit, 'id' | 'created_at' | 'counter_up' | 'counter_down' | 'order'>) => void;
+  addHabit: (habit: Omit<Habit, 'id' | 'created_at' | 'streak' | 'negative_streak' | 'last_completed' | 'last_action_date' | 'order'>) => void;
   updateHabit: (id: string, updates: Partial<Habit>) => void;
   deleteHabit: (id: string) => void;
   reorderHabits: (reorderedHabits: Habit[]) => void;
 
   // Game actions
-  incrementPositive: (id: string) => void;
-  incrementNegative: (id: string) => void;
+  completeHabit: (id: string) => void;
+  failHabit: (id: string) => void;
+  applyMissedHabitPenalties: () => void;
 }
 
 export const useHabitsStore = create<HabitsState>((set, get) => ({
@@ -43,8 +38,10 @@ export const useHabitsStore = create<HabitsState>((set, get) => ({
     const newHabit: Habit = {
       ...habitData,
       id: Date.now().toString(),
-      counter_up: 0,
-      counter_down: 0,
+      streak: 0,
+      negative_streak: 0,
+      last_completed: undefined,
+      last_action_date: undefined,
       order: maxOrder + 1,
       created_at: new Date().toISOString(),
     };
@@ -71,40 +68,100 @@ export const useHabitsStore = create<HabitsState>((set, get) => ({
     set({ habits: habitsWithNewOrder });
   },
 
-  incrementPositive: (id) => {
+  completeHabit: (id) => {
     const { habits } = get();
     const habit = habits.find((h) => h.id === id);
     if (!habit) return;
 
-    // Обновляем счётчик
+    const today = new Date().toISOString().split('T')[0];
+
+    // Серия всегда увеличивается на 1
+    const newStreak = habit.streak + 1;
+
+    // Обновляем привычку
     set((state) => ({
       habits: state.habits.map((h) =>
-        h.id === id ? { ...h, counter_up: h.counter_up + 1 } : h
+        h.id === id
+          ? {
+              ...h,
+              streak: newStreak,
+              negative_streak: 0,
+              last_completed: new Date().toISOString(),
+              last_action_date: new Date().toISOString(),
+            }
+          : h
       ),
     }));
 
-    // Применяем награды через characterStore
+    // Применяем награды
     const characterStore = useCharacterStore.getState();
     characterStore.addXP(XP_BY_DIFFICULTY[habit.difficulty]);
-    characterStore.addGold(GOLD_BY_DIFFICULTY[habit.difficulty]);
-    // Прокачиваем все выбранные атрибуты (включая discipline)
-    characterStore.incrementTaskCount(habit.attributes);
+
+    // Увеличиваем серию для каждого атрибута
+    habit.attributes.forEach((attr) => {
+      characterStore.incrementAttributeStreak(attr);
+    });
   },
 
-  incrementNegative: (id) => {
+  failHabit: (id) => {
     const { habits } = get();
     const habit = habits.find((h) => h.id === id);
     if (!habit) return;
 
-    // Обновляем счётчик
+    // Обновляем привычку - сбрасываем положительную серию, увеличиваем отрицательную
     set((state) => ({
       habits: state.habits.map((h) =>
-        h.id === id ? { ...h, counter_down: h.counter_down + 1 } : h
+        h.id === id
+          ? {
+              ...h,
+              streak: 0,
+              negative_streak: h.negative_streak + 1,
+              last_action_date: new Date().toISOString(),
+            }
+          : h
       ),
     }));
 
-    // Применяем штраф
+    // Применяем штраф XP
     const characterStore = useCharacterStore.getState();
     characterStore.addXP(XP_REWARDS.habit_negative);
+
+    // Сбрасываем серии и штрафуем каждый атрибут на -1
+    habit.attributes.forEach((attr) => {
+      characterStore.resetAttributeStreak(attr);
+    });
+  },
+
+  applyMissedHabitPenalties: () => {
+    const { habits } = get();
+    const today = new Date().toISOString().split('T')[0];
+
+    habits.forEach((habit) => {
+      const lastActionDate = habit.last_action_date?.split('T')[0];
+
+      // Если привычка была использована и сегодня не было действий
+      if (habit.last_action_date && lastActionDate !== today) {
+        // Применяем тот же эффект, что и при нажатии на "-"
+        set((state) => ({
+          habits: state.habits.map((h) =>
+            h.id === habit.id
+              ? {
+                  ...h,
+                  streak: 0,
+                  negative_streak: h.negative_streak + 1,
+                  last_action_date: new Date().toISOString(),
+                }
+              : h
+          ),
+        }));
+
+        const characterStore = useCharacterStore.getState();
+        characterStore.addXP(XP_REWARDS.habit_negative);
+
+        habit.attributes.forEach((attr) => {
+          characterStore.resetAttributeStreak(attr);
+        });
+      }
+    });
   },
 }));

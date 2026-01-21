@@ -39,8 +39,10 @@ export interface Habit {
   type: HabitType;
   attributes: AttributeType[]; // Какие атрибуты качает (включая discipline)
   difficulty: TaskDifficulty;
-  counter_up: number;
-  counter_down: number;
+  streak: number; // Положительная серия
+  negative_streak: number; // Отрицательная серия
+  last_completed?: string; // Дата последнего выполнения (ISO string)
+  last_action_date?: string; // Дата последнего действия (ISO string)
   order: number;
   created_at: string;
 }
