@@ -16,7 +16,7 @@ interface CharacterState {
 
   // Actions
   setCharacter: (character: Character) => void;
-  createCharacter: (name: string, userId: string) => void;
+  createCharacter: (name: string, userId: string, avatar?: string) => void;
 
   // Server sync
   syncWithServer: () => Promise<void>;
@@ -84,11 +84,12 @@ export const useCharacterStore = create<CharacterState>(
     }
   },
 
-  createCharacter: (name, userId) => {
+  createCharacter: (name, userId, avatar) => {
     const newCharacter: Character = {
       id: Date.now().toString(),
       user_id: userId,
       name,
+      avatar,
       ...INITIAL_CHARACTER_STATS,
       created_at: new Date().toISOString(),
     };

@@ -10,23 +10,12 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useCharacterStore } from '@/store/characterStore';
+import { AVATARS } from '@/constants/avatars';
 
 interface CharacterCreationScreenProps {
   userId: string;
   onComplete: () => void;
 }
-
-// Простые заглушки для аватаров (emoji/иконки)
-const AVATARS = [
-  { id: '1', icon: 'account', color: '#E74C3C' },
-  { id: '2', icon: 'ninja', color: '#3498DB' },
-  { id: '3', icon: 'wizard-hat', color: '#9B59B6' },
-  { id: '4', icon: 'shield-sword', color: '#E67E22' },
-  { id: '5', icon: 'magic-staff', color: '#1ABC9C' },
-  { id: '6', icon: 'bow-arrow', color: '#F39C12' },
-  { id: '7', icon: 'chess-knight', color: '#27AE60' },
-  { id: '8', icon: 'crown', color: '#F1C40F' },
-];
 
 export function CharacterCreationScreen({ userId, onComplete }: CharacterCreationScreenProps) {
   const [name, setName] = useState('');
@@ -54,11 +43,8 @@ export function CharacterCreationScreen({ userId, onComplete }: CharacterCreatio
 
     setIsCreating(true);
     try {
-      // Создаем персонажа с выбранным именем
-      createCharacter(trimmedName, userId);
-
-      // Сохраняем выбранный аватар в AsyncStorage (для будущего использования)
-      // TODO: добавить поле avatar в Character interface
+      // Создаем персонажа с выбранным именем и аватаром
+      createCharacter(trimmedName, userId, selectedAvatar);
 
       // Если пользователь авторизован, синхронизируем с сервером
       if (userId !== 'local-user') {

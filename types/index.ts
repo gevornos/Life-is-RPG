@@ -15,6 +15,7 @@ export interface Character {
   id: string;
   user_id: string;
   name: string;
+  avatar?: string; // ID выбранного аватара (опционально, для локального использования)
   level: number;
   xp: number;
   hp: number;

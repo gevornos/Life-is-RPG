@@ -11,6 +11,7 @@ import { useTasksStore } from '@/store/tasksStore';
 import { useDailiesStore } from '@/store/dailiesStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '@/lib/supabase';
+import { getAvatarById } from '@/constants/avatars';
 
 interface CharacterModalProps {
   visible: boolean;
@@ -199,6 +200,9 @@ export function CharacterModal({ visible, onClose }: CharacterModalProps) {
 
   if (!character) return null;
 
+  // Получаем аватар персонажа
+  const avatar = getAvatarById(character.avatar);
+
   // Рассчитываем XP для текущего уровня
   let xpForPreviousLevels = 0;
   for (let i = 1; i < character.level; i++) {
@@ -222,8 +226,8 @@ export function CharacterModal({ visible, onClose }: CharacterModalProps) {
         <ScrollView style={styles.content}>
           {/* Аватар и основные статы */}
           <View style={styles.heroSection}>
-            <View style={styles.avatarContainer}>
-              <MaterialCommunityIcons name="account-circle" size={100} color="#6C5CE7" />
+            <View style={[styles.avatarContainer, { backgroundColor: avatar.color }]}>
+              <MaterialCommunityIcons name={avatar.icon as any} size={80} color="#fff" />
             </View>
             <Text style={styles.name}>{character.name}</Text>
             <Text style={styles.level}>Уровень {character.level}</Text>
@@ -373,6 +377,11 @@ const styles = StyleSheet.create({
   },
   avatarContainer: {
     marginBottom: 8,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   name: {
     fontSize: 24,
