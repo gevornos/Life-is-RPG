@@ -1,8 +1,14 @@
 import { create } from 'zustand';
-import { Daily, DailyFrequency, AttributeType } from '@/types';
+import { Daily, DailyFrequency, AttributeType, TaskDifficulty } from '@/types';
 import { XP_REWARDS, PENALTIES } from '@/constants/gameConfig';
 import { useCharacterStore } from './characterStore';
 import { persist } from './middleware/persist';
+
+const XP_BY_DIFFICULTY: Record<TaskDifficulty, number> = {
+  easy: XP_REWARDS.task_easy,
+  medium: XP_REWARDS.task_medium,
+  hard: XP_REWARDS.task_hard,
+};
 
 interface DailiesState {
   dailies: Daily[];
@@ -120,7 +126,9 @@ export const useDailiesStore = create<DailiesState>(
 
     // Применяем награды
     const characterStore = useCharacterStore.getState();
-    const xpReward = XP_REWARDS.daily_base + newStreak * XP_REWARDS.daily_streak_bonus;
+    const baseXP = XP_BY_DIFFICULTY[daily.difficulty];
+    const streakBonus = newStreak * XP_REWARDS.daily_streak_bonus;
+    const xpReward = baseXP + streakBonus;
     characterStore.addXP(xpReward);
 
     // Увеличиваем серию для каждого атрибута
@@ -149,7 +157,9 @@ export const useDailiesStore = create<DailiesState>(
 
     // Откатываем награды
     const characterStore = useCharacterStore.getState();
-    const xpReward = XP_REWARDS.daily_base + daily.streak * XP_REWARDS.daily_streak_bonus;
+    const baseXP = XP_BY_DIFFICULTY[daily.difficulty];
+    const streakBonus = daily.streak * XP_REWARDS.daily_streak_bonus;
+    const xpReward = baseXP + streakBonus;
     characterStore.addXP(-xpReward);
   },
 
