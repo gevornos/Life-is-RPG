@@ -96,7 +96,13 @@ export const characterService = {
       // Убираем id, created_at, updated_at, avatar - Supabase сам их сгенерирует
       // avatar хранится только локально
       const { id, created_at, updated_at, avatar, ...characterData } = localCharacter;
-      return await this.createCharacter(characterData);
+      const createdCharacter = await this.createCharacter(characterData);
+
+      // Возвращаем персонажа с локальным avatar
+      return {
+        ...createdCharacter,
+        avatar: localCharacter.avatar,
+      };
     }
 
     // Мерджим данные:

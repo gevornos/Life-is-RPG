@@ -5,6 +5,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCharacterStore } from '@/store/characterStore';
 import { calculateXPForLevel } from '@/constants/gameConfig';
+import { getAvatarById } from '@/constants/avatars';
 
 interface CharacterHeaderProps {
   onPress: () => void;
@@ -16,15 +17,18 @@ export function CharacterHeader({ onPress }: CharacterHeaderProps) {
 
   if (!character) return null;
 
+  const avatar = getAvatarById(character.avatar);
+
   // Рассчитываем XP для текущего уровня
   let xpForPreviousLevels = 0;
   for (let i = 1; i < character.level; i++) {
     xpForPreviousLevels += calculateXPForLevel(i);
   }
   const xpInCurrentLevel = character.xp - xpForPreviousLevels;
-  const xpNeededForLevel = calculateXPForLevel(character.level);
+  // Для отображения берем XP до следующего уровня, а не текущего
+  const xpNeededForLevel = calculateXPForLevel(character.level + 1);
   const hpPercent = (character.hp / character.max_hp) * 100;
-  const xpPercent = (xpInCurrentLevel / xpNeededForLevel) * 100;
+  const xpPercent = xpNeededForLevel > 0 ? (xpInCurrentLevel / xpNeededForLevel) * 100 : 0;
 
   return (
     <TouchableOpacity
@@ -34,7 +38,9 @@ export function CharacterHeader({ onPress }: CharacterHeaderProps) {
     >
       {/* Левая часть: Аватар, Имя + Уровень */}
       <View style={styles.leftSection}>
-        <MaterialCommunityIcons name="account-circle" size={60} color="#6C5CE7" />
+        <View style={[styles.avatarContainer, { backgroundColor: avatar.color }]}>
+          <MaterialCommunityIcons name={avatar.icon as any} size={32} color="#fff" />
+        </View>
         <View style={styles.nameRow}>
           <Text style={styles.name} numberOfLines={1}>{character.name}</Text>
           <Text style={styles.level}>, Ур. {character.level}</Text>
@@ -105,6 +111,13 @@ const styles = StyleSheet.create({
   leftSection: {
     alignItems: 'center',
     width: 80,
+  },
+  avatarContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   nameRow: {
     flexDirection: 'row',

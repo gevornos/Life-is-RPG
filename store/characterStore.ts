@@ -56,9 +56,16 @@ export const useCharacterStore = create<CharacterState>(
   loadFromServer: async () => {
     set({ isLoading: true });
     try {
+      const { character: localCharacter } = get();
       const serverCharacter = await characterService.fetchCharacter();
       if (serverCharacter) {
-        set({ character: serverCharacter });
+        // Сохраняем локальный аватар при загрузке с сервера
+        const characterToSet = {
+          ...serverCharacter,
+          avatar: localCharacter?.avatar || serverCharacter.avatar,
+        };
+        console.log('Loading from server, preserving avatar:', characterToSet.avatar);
+        set({ character: characterToSet });
       }
     } catch (error) {
       console.error('Failed to load character from server:', error);

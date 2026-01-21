@@ -201,7 +201,9 @@ export function CharacterModal({ visible, onClose }: CharacterModalProps) {
   if (!character) return null;
 
   // Получаем аватар персонажа
+  console.log('Character avatar:', character.avatar);
   const avatar = getAvatarById(character.avatar);
+  console.log('Avatar object:', avatar);
 
   // Рассчитываем XP для текущего уровня
   let xpForPreviousLevels = 0;
@@ -209,8 +211,9 @@ export function CharacterModal({ visible, onClose }: CharacterModalProps) {
     xpForPreviousLevels += calculateXPForLevel(i);
   }
   const xpInCurrentLevel = character.xp - xpForPreviousLevels;
-  const xpNeededForLevel = calculateXPForLevel(character.level);
-  const levelProgress = xpInCurrentLevel / xpNeededForLevel;
+  // Для отображения берем XP до следующего уровня, а не текущего
+  const xpNeededForLevel = calculateXPForLevel(character.level + 1);
+  const levelProgress = xpNeededForLevel > 0 ? xpInCurrentLevel / xpNeededForLevel : 0;
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
