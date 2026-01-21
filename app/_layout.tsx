@@ -93,7 +93,8 @@ function RootLayoutNav() {
         if (session) {
           setIsAuthenticated(true);
           setUserId(session.user.id);
-          // Загружаем персонажа с сервера
+          // Пытаемся загрузить персонажа с сервера
+          // Если персонажа нет - покажется экран создания
           await loadFromServer();
         } else if (skippedAuth === 'true') {
           // Пользователь ранее пропустил авторизацию
@@ -121,6 +122,8 @@ function RootLayoutNav() {
         setIsAuthenticated(true);
         setShouldShowAuth(false);
         setUserId(session.user.id);
+        // Загружаем персонажа с сервера, если он там есть
+        // Если персонажа нет - покажется экран создания персонажа
         await loadFromServer();
       } else {
         // Когда пользователь выходит из аккаунта

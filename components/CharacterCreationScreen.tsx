@@ -31,9 +31,10 @@ const AVATARS = [
 export function CharacterCreationScreen({ userId, onComplete }: CharacterCreationScreenProps) {
   const [name, setName] = useState('');
   const [selectedAvatar, setSelectedAvatar] = useState(AVATARS[0].id);
-  const { createCharacter } = useCharacterStore();
+  const [isCreating, setIsCreating] = useState(false);
+  const { createCharacter, syncWithServer } = useCharacterStore();
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     const trimmedName = name.trim();
 
     if (!trimmedName) {
@@ -51,13 +52,26 @@ export function CharacterCreationScreen({ userId, onComplete }: CharacterCreatio
       return;
     }
 
-    // Создаем персонажа с выбранным именем
-    createCharacter(trimmedName, userId);
+    setIsCreating(true);
+    try {
+      // Создаем персонажа с выбранным именем
+      createCharacter(trimmedName, userId);
 
-    // Сохраняем выбранный аватар в AsyncStorage (для будущего использования)
-    // TODO: добавить поле avatar в Character interface
+      // Сохраняем выбранный аватар в AsyncStorage (для будущего использования)
+      // TODO: добавить поле avatar в Character interface
 
-    onComplete();
+      // Если пользователь авторизован, синхронизируем с сервером
+      if (userId !== 'local-user') {
+        await syncWithServer();
+      }
+
+      onComplete();
+    } catch (error) {
+      console.error('Error creating character:', error);
+      Alert.alert('Ошибка', 'Не удалось создать персонажа');
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   return (
@@ -130,13 +144,15 @@ export function CharacterCreationScreen({ userId, onComplete }: CharacterCreatio
         <TouchableOpacity
           style={[
             styles.createButton,
-            !name.trim() && styles.createButtonDisabled,
+            (!name.trim() || isCreating) && styles.createButtonDisabled,
           ]}
           onPress={handleCreate}
-          disabled={!name.trim()}
+          disabled={!name.trim() || isCreating}
         >
           <MaterialCommunityIcons name="sword-cross" size={24} color="#fff" />
-          <Text style={styles.createButtonText}>Начать приключение</Text>
+          <Text style={styles.createButtonText}>
+            {isCreating ? 'Создание...' : 'Начать приключение'}
+          </Text>
         </TouchableOpacity>
       </ScrollView>
     </View>
