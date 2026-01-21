@@ -118,7 +118,15 @@ function RootLayoutNav() {
         setShouldShowAuth(false);
         await loadFromServer();
       } else {
+        // Когда пользователь выходит из аккаунта
         setIsAuthenticated(false);
+
+        // Проверяем, был ли пропуск авторизации
+        const skippedAuth = await AsyncStorage.getItem('auth_skipped');
+        if (skippedAuth !== 'true') {
+          // Если не пропускали - показываем экран авторизации
+          setShouldShowAuth(true);
+        }
       }
     });
 
