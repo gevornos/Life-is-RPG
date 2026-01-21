@@ -24,6 +24,18 @@ export function CharacterModal({ visible, onClose }: CharacterModalProps) {
   const tasksStore = useTasksStore();
   const dailiesStore = useDailiesStore();
   const [isResetting, setIsResetting] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  // Проверяем авторизацию при открытии модального окна
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setIsLoggedIn(!!session);
+    };
+    if (visible) {
+      checkAuth();
+    }
+  }, [visible]);
 
   useEffect(() => {
     if (!character) {
@@ -76,6 +88,29 @@ export function CharacterModal({ visible, onClose }: CharacterModalProps) {
     );
   };
 
+  const handleLoginToAccount = async () => {
+    Alert.alert(
+      'Войти в аккаунт',
+      'Хотите привязать свой прогресс к аккаунту? После входа данные синхронизируются с сервером.',
+      [
+        { text: 'Отмена', style: 'cancel' },
+        {
+          text: 'Войти',
+          onPress: async () => {
+            // Удаляем флаг пропуска авторизации
+            await AsyncStorage.removeItem('auth_skipped');
+            // Перезагружаем приложение - покажется экран авторизации
+            Alert.alert(
+              'Перезапустите приложение',
+              'Закройте и откройте приложение заново, чтобы войти в аккаунт.',
+              [{ text: 'OK', onPress: onClose }]
+            );
+          },
+        },
+      ]
+    );
+  };
+
   const handleDeleteAccount = () => {
     Alert.alert(
       'Удаление аккаунта',
@@ -91,16 +126,8 @@ export function CharacterModal({ visible, onClose }: CharacterModalProps) {
           onPress: async () => {
             setIsResetting(true);
             try {
-              // Вызываем функцию удаления аккаунта на сервере
-              const { error: rpcError } = await supabase.rpc('delete_own_account');
-
-              if (rpcError) {
-                console.error('RPC error:', rpcError);
-                // Если функции нет на сервере, просто выходим
-                await supabase.auth.signOut();
-              }
-
-              // Очищаем ВСЕ данные из AsyncStorage
+              // ВАЖНО: Сначала очищаем AsyncStorage, ПОТОМ выходим из аккаунта
+              // Иначе onAuthStateChange увидит старый auth_skipped флаг
               await AsyncStorage.clear();
 
               // Сбрасываем stores
@@ -110,6 +137,15 @@ export function CharacterModal({ visible, onClose }: CharacterModalProps) {
 
               // Создаем нового персонажа
               createCharacter('Герой', 'local-user');
+
+              // Вызываем функцию удаления аккаунта на сервере
+              const { error: rpcError } = await supabase.rpc('delete_own_account');
+
+              if (rpcError) {
+                console.error('RPC error:', rpcError);
+                // Если функции нет на сервере, просто выходим
+                await supabase.auth.signOut();
+              }
 
               onClose();
 
@@ -224,6 +260,25 @@ export function CharacterModal({ visible, onClose }: CharacterModalProps) {
             </View>
           </View>
 
+          {/* Кнопка входа для локальных игроков */}
+          {!isLoggedIn && (
+            <View style={styles.accountSection}>
+              <Text style={styles.accountTitle}>Аккаунт</Text>
+              <TouchableOpacity
+                style={styles.loginButton}
+                onPress={handleLoginToAccount}
+              >
+                <MaterialCommunityIcons name="account-plus" size={20} color="#fff" />
+                <Text style={styles.loginButtonText}>
+                  Войти в аккаунт
+                </Text>
+              </TouchableOpacity>
+              <Text style={styles.accountHint}>
+                Привяжите прогресс к аккаунту для синхронизации между устройствами
+              </Text>
+            </View>
+          )}
+
           {/* Debug: Кнопки для тестирования */}
           <View style={styles.debugSection}>
             <Text style={styles.debugTitle}>Debug</Text>
@@ -239,16 +294,18 @@ export function CharacterModal({ visible, onClose }: CharacterModalProps) {
               </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[styles.resetButton, styles.deleteAccountButton]}
-              onPress={handleDeleteAccount}
-              disabled={isResetting}
-            >
-              <MaterialCommunityIcons name="account-remove" size={20} color="#fff" />
-              <Text style={styles.resetButtonText}>
-                {isResetting ? 'Удаление...' : 'Удалить аккаунт полностью'}
-              </Text>
-            </TouchableOpacity>
+            {isLoggedIn && (
+              <TouchableOpacity
+                style={[styles.resetButton, styles.deleteAccountButton]}
+                onPress={handleDeleteAccount}
+                disabled={isResetting}
+              >
+                <MaterialCommunityIcons name="account-remove" size={20} color="#fff" />
+                <Text style={styles.resetButtonText}>
+                  {isResetting ? 'Удаление...' : 'Удалить аккаунт полностью'}
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         </ScrollView>
       </View>
@@ -373,6 +430,43 @@ const styles = StyleSheet.create({
     fontSize: 12,
     opacity: 0.7,
     marginTop: 2,
+  },
+  accountSection: {
+    marginTop: 24,
+    padding: 16,
+    borderRadius: 12,
+    backgroundColor: 'rgba(108, 92, 231, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(108, 92, 231, 0.3)',
+  },
+  accountTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 12,
+    color: '#6C5CE7',
+    opacity: 0.9,
+  },
+  loginButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#6C5CE7',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  loginButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  accountHint: {
+    fontSize: 12,
+    opacity: 0.6,
+    textAlign: 'center',
+    marginTop: 4,
   },
   debugSection: {
     marginTop: 32,
