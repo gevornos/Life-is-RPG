@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { Daily, DailyFrequency, AttributeType } from '@/types';
 import { XP_REWARDS, PENALTIES } from '@/constants/gameConfig';
 import { useCharacterStore } from './characterStore';
+import { persist } from './middleware/persist';
 
 interface DailiesState {
   dailies: Daily[];
@@ -32,9 +33,11 @@ const isToday = (dateString: string | null | undefined): boolean => {
   );
 };
 
-export const useDailiesStore = create<DailiesState>((set, get) => ({
-  dailies: [],
-  isLoading: false,
+export const useDailiesStore = create<DailiesState>(
+  persist(
+    (set, get) => ({
+      dailies: [],
+      isLoading: false,
 
   setDailies: (dailies) => set({ dailies }),
 
@@ -190,4 +193,7 @@ export const useDailiesStore = create<DailiesState>((set, get) => ({
       }
     });
   },
-}));
+    }),
+    { name: 'dailies-storage', version: 1 }
+  )
+);

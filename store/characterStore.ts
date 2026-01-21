@@ -6,6 +6,7 @@ import {
   XP_REWARDS,
   STREAK_DAYS_FOR_ATTRIBUTE_POINT,
 } from '@/constants/gameConfig';
+import { persist } from './middleware/persist';
 
 interface CharacterState {
   character: Character | null;
@@ -29,16 +30,18 @@ interface CharacterState {
   resetAttributeStreak: (attribute: AttributeType) => void;
 }
 
-export const useCharacterStore = create<CharacterState>((set, get) => ({
-  character: null,
-  isLoading: false,
-  attributeStreaks: {
-    strength: 0,
-    health: 0,
-    intelligence: 0,
-    creativity: 0,
-    discipline: 0,
-  },
+export const useCharacterStore = create<CharacterState>(
+  persist(
+    (set, get) => ({
+      character: null,
+      isLoading: false,
+      attributeStreaks: {
+        strength: 0,
+        health: 0,
+        intelligence: 0,
+        creativity: 0,
+        discipline: 0,
+      },
 
   setCharacter: (character) => set({ character }),
 
@@ -162,4 +165,7 @@ export const useCharacterStore = create<CharacterState>((set, get) => ({
 
     set({ attributeStreaks: newStreaks });
   },
-}));
+    }),
+    { name: 'character-storage', version: 1 }
+  )
+);

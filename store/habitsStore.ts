@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { Habit, HabitType, TaskDifficulty } from '@/types';
 import { XP_REWARDS } from '@/constants/gameConfig';
 import { useCharacterStore } from './characterStore';
+import { persist } from './middleware/persist';
 
 const XP_BY_DIFFICULTY: Record<TaskDifficulty, number> = {
   easy: XP_REWARDS.habit_positive,
@@ -26,9 +27,11 @@ interface HabitsState {
   applyMissedHabitPenalties: () => void;
 }
 
-export const useHabitsStore = create<HabitsState>((set, get) => ({
-  habits: [],
-  isLoading: false,
+export const useHabitsStore = create<HabitsState>(
+  persist(
+    (set, get) => ({
+      habits: [],
+      isLoading: false,
 
   setHabits: (habits) => set({ habits }),
 
@@ -164,4 +167,7 @@ export const useHabitsStore = create<HabitsState>((set, get) => ({
       }
     });
   },
-}));
+    }),
+    { name: 'habits-storage', version: 1 }
+  )
+);

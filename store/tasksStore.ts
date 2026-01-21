@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { Task, TaskDifficulty, AttributeType } from '@/types';
 import { XP_REWARDS } from '@/constants/gameConfig';
 import { useCharacterStore } from './characterStore';
+import { persist } from './middleware/persist';
 
 interface TasksState {
   tasks: Task[];
@@ -29,9 +30,11 @@ const XP_BY_DIFFICULTY: Record<TaskDifficulty, number> = {
   hard: XP_REWARDS.task_hard,
 };
 
-export const useTasksStore = create<TasksState>((set, get) => ({
-  tasks: [],
-  isLoading: false,
+export const useTasksStore = create<TasksState>(
+  persist(
+    (set, get) => ({
+      tasks: [],
+      isLoading: false,
 
   setTasks: (tasks) => set({ tasks }),
 
@@ -132,4 +135,7 @@ export const useTasksStore = create<TasksState>((set, get) => ({
   getCompletedTasks: () => {
     return get().tasks.filter((t) => t.completed);
   },
-}));
+    }),
+    { name: 'tasks-storage', version: 1 }
+  )
+);
