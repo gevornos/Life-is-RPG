@@ -3,6 +3,7 @@ import { Habit, HabitType, TaskDifficulty } from '@/types';
 import { XP_REWARDS } from '@/constants/gameConfig';
 import { useCharacterStore } from './characterStore';
 import { persist } from './middleware/persist';
+import { rewardsService } from '@/lib/rewardsService';
 
 const XP_BY_DIFFICULTY: Record<TaskDifficulty, number> = {
   easy: XP_REWARDS.habit_positive,
@@ -22,8 +23,8 @@ interface HabitsState {
   reorderHabits: (reorderedHabits: Habit[]) => void;
 
   // Game actions
-  completeHabit: (id: string) => void;
-  failHabit: (id: string) => void;
+  completeHabit: (id: string) => Promise<void>;
+  failHabit: (id: string) => Promise<void>;
   applyMissedHabitPenalties: () => void;
 }
 
@@ -71,7 +72,7 @@ export const useHabitsStore = create<HabitsState>(
     set({ habits: habitsWithNewOrder });
   },
 
-  completeHabit: (id) => {
+  completeHabit: async (id) => {
     const { habits } = get();
     const habit = habits.find((h) => h.id === id);
     if (!habit) return;
@@ -96,20 +97,49 @@ export const useHabitsStore = create<HabitsState>(
       ),
     }));
 
-    // Применяем награды
-    const characterStore = useCharacterStore.getState();
-    characterStore.addXP(XP_BY_DIFFICULTY[habit.difficulty]);
+    // Применяем награды через защищенную серверную функцию
+    try {
+      const reward = await rewardsService.grantHabitReward(
+        id,
+        true, // is_positive
+        habit.attributes[0] // используем первый атрибут для награды
+      );
 
-    // Увеличиваем серию для каждого атрибута
-    habit.attributes.forEach((attr) => {
-      characterStore.incrementAttributeStreak(attr);
-    });
+      console.log('Habit reward granted:', reward);
+
+      // Обновляем персонажа с сервера после начисления
+      const characterStore = useCharacterStore.getState();
+      await characterStore.loadFromServer();
+
+      // Увеличиваем серию для каждого атрибута (локально)
+      habit.attributes.forEach((attr) => {
+        characterStore.incrementAttributeStreak(attr);
+      });
+    } catch (error) {
+      console.error('Failed to grant habit reward:', error);
+      // Откатываем локальные изменения при ошибке
+      set((state) => ({
+        habits: state.habits.map((h) =>
+          h.id === id
+            ? {
+                ...h,
+                streak: habit.streak,
+                negative_streak: habit.negative_streak,
+                last_completed: habit.last_completed,
+                last_action_date: habit.last_action_date,
+              }
+            : h
+        ),
+      }));
+    }
   },
 
-  failHabit: (id) => {
+  failHabit: async (id) => {
     const { habits } = get();
     const habit = habits.find((h) => h.id === id);
     if (!habit) return;
+
+    const oldNegativeStreak = habit.negative_streak;
 
     // Обновляем привычку - сбрасываем положительную серию, увеличиваем отрицательную
     set((state) => ({
@@ -125,14 +155,40 @@ export const useHabitsStore = create<HabitsState>(
       ),
     }));
 
-    // Применяем штраф XP
-    const characterStore = useCharacterStore.getState();
-    characterStore.addXP(XP_REWARDS.habit_negative);
+    // Применяем штраф через защищенную серверную функцию
+    try {
+      const reward = await rewardsService.grantHabitReward(
+        id,
+        false, // is_positive (negative habit)
+        habit.attributes[0]
+      );
 
-    // Сбрасываем серии и штрафуем каждый атрибут на -1
-    habit.attributes.forEach((attr) => {
-      characterStore.resetAttributeStreak(attr);
-    });
+      console.log('Habit penalty applied:', reward);
+
+      // Обновляем персонажа с сервера
+      const characterStore = useCharacterStore.getState();
+      await characterStore.loadFromServer();
+
+      // Сбрасываем серии и штрафуем каждый атрибут на -1 (локально)
+      habit.attributes.forEach((attr) => {
+        characterStore.resetAttributeStreak(attr);
+      });
+    } catch (error) {
+      console.error('Failed to apply habit penalty:', error);
+      // Откатываем локальные изменения при ошибке
+      set((state) => ({
+        habits: state.habits.map((h) =>
+          h.id === id
+            ? {
+                ...h,
+                streak: habit.streak,
+                negative_streak: oldNegativeStreak,
+                last_action_date: habit.last_action_date,
+              }
+            : h
+        ),
+      }));
+    }
   },
 
   applyMissedHabitPenalties: () => {
