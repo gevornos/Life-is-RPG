@@ -1,0 +1,8 @@
+# Supabase
+.temp/
+.branches/
+.env.local
+
+# Local Supabase
+.docker/
+volumes/
