@@ -1,10 +1,13 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createClient } from "@supabase/supabase-js";
 
-// Замените на свои данные из Supabase Dashboard
-const SUPABASE_URL = "https://vrfabgvwrracgeirmptm.supabase.co";
+// Proxy URL для доступа из России
+const PROXY_URL = "https://proxy-server-two-omega.vercel.app";
+
+// Supabase credentials
+const SUPABASE_URL = PROXY_URL; // Используем proxy вместо прямого URL
 const SUPABASE_ANON_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZyZmFiZ3Z3cnJhY2dlaXJtcHRtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkwMDQ2ODcsImV4cCI6MjA4NDU4MDY4N30.JjsQUvfMWhdtXXANdn-LIpDRB6oj5BAVgg-LlteJT64"; // Нужен anon ключ из Supabase Dashboard
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZyZmFiZ3Z3cnJhY2dlaXJtcHRtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkwMDQ2ODcsImV4cCI6MjA4NDU4MDY4N30.JjsQUvfMWhdtXXANdn-LIpDRB6oj5BAVgg-LlteJT64";
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
