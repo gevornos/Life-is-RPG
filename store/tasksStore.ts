@@ -3,6 +3,7 @@ import { Task, TaskDifficulty, AttributeType } from '@/types';
 import { XP_REWARDS } from '@/constants/gameConfig';
 import { useCharacterStore } from './characterStore';
 import { persist } from './middleware/persist';
+import { rewardsService } from '@/lib/rewardsService';
 
 interface TasksState {
   tasks: Task[];
@@ -16,7 +17,7 @@ interface TasksState {
   reorderTasks: (reorderedTasks: Task[]) => void;
 
   // Game actions
-  completeTask: (id: string) => void;
+  completeTask: (id: string) => Promise<void>;
   uncompleteTask: (id: string) => void;
 
   // Filters
@@ -72,10 +73,12 @@ export const useTasksStore = create<TasksState>(
     set({ tasks: tasksWithNewOrder });
   },
 
-  completeTask: (id) => {
+  completeTask: async (id) => {
     const { tasks } = get();
     const task = tasks.find((t) => t.id === id);
     if (!task || task.completed) return;
+
+    const oldCompletedAt = task.completed_at;
 
     // Обновляем задачу
     set((state) => ({
@@ -90,14 +93,39 @@ export const useTasksStore = create<TasksState>(
       ),
     }));
 
-    // Применяем награды
-    const characterStore = useCharacterStore.getState();
-    characterStore.addXP(XP_BY_DIFFICULTY[task.difficulty]);
+    // Применяем награды через защищенную серверную функцию
+    try {
+      const reward = await rewardsService.grantTaskReward(
+        id,
+        task.difficulty,
+        task.attributes[0] // используем первый атрибут
+      );
 
-    // Увеличиваем серию для каждого атрибута
-    task.attributes.forEach((attr) => {
-      characterStore.incrementAttributeStreak(attr);
-    });
+      console.log('Task reward granted:', reward);
+
+      // Обновляем персонажа с сервера
+      const characterStore = useCharacterStore.getState();
+      await characterStore.loadFromServer();
+
+      // Увеличиваем серию для каждого атрибута (локально)
+      task.attributes.forEach((attr) => {
+        characterStore.incrementAttributeStreak(attr);
+      });
+    } catch (error) {
+      console.error('Failed to grant task reward:', error);
+      // Откатываем локальные изменения при ошибке
+      set((state) => ({
+        tasks: state.tasks.map((t) =>
+          t.id === id
+            ? {
+                ...t,
+                completed: false,
+                completed_at: oldCompletedAt,
+              }
+            : t
+        ),
+      }));
+    }
   },
 
   uncompleteTask: (id) => {

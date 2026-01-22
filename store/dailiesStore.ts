@@ -3,6 +3,7 @@ import { Daily, DailyFrequency, AttributeType, TaskDifficulty } from '@/types';
 import { XP_REWARDS, PENALTIES } from '@/constants/gameConfig';
 import { useCharacterStore } from './characterStore';
 import { persist } from './middleware/persist';
+import { rewardsService } from '@/lib/rewardsService';
 
 const XP_BY_DIFFICULTY: Record<TaskDifficulty, number> = {
   easy: XP_REWARDS.task_easy,
@@ -22,7 +23,7 @@ interface DailiesState {
   reorderDailies: (reorderedDailies: Daily[]) => void;
 
   // Game actions
-  completeDaily: (id: string) => void;
+  completeDaily: (id: string) => Promise<void>;
   uncompleteDaily: (id: string) => void;
   resetDailies: () => void; // Вызывается в начале нового дня
   applyMissedPenalties: () => void; // Штрафы за пропущенные
@@ -90,7 +91,7 @@ export const useDailiesStore = create<DailiesState>(
     set({ dailies: dailiesWithNewOrder });
   },
 
-  completeDaily: (id) => {
+  completeDaily: async (id) => {
     const { dailies } = get();
     const daily = dailies.find((d) => d.id === id);
     if (!daily || daily.completed_today) return;
@@ -109,6 +110,8 @@ export const useDailiesStore = create<DailiesState>(
       : false;
 
     const newStreak = wasCompletedYesterday ? daily.streak + 1 : 1;
+    const oldStreak = daily.streak;
+    const oldLastCompleted = daily.last_completed;
 
     // Обновляем ежедневное
     set((state) => ({
@@ -124,17 +127,40 @@ export const useDailiesStore = create<DailiesState>(
       ),
     }));
 
-    // Применяем награды
-    const characterStore = useCharacterStore.getState();
-    const baseXP = XP_BY_DIFFICULTY[daily.difficulty];
-    const streakBonus = newStreak * XP_REWARDS.daily_streak_bonus;
-    const xpReward = baseXP + streakBonus;
-    characterStore.addXP(xpReward);
+    // Применяем награды через защищенную серверную функцию
+    try {
+      const reward = await rewardsService.grantDailyReward(
+        id,
+        newStreak,
+        daily.attributes[0] // используем первый атрибут
+      );
 
-    // Увеличиваем серию для каждого атрибута
-    daily.attributes.forEach((attr) => {
-      characterStore.incrementAttributeStreak(attr);
-    });
+      console.log('Daily reward granted:', reward);
+
+      // Обновляем персонажа с сервера
+      const characterStore = useCharacterStore.getState();
+      await characterStore.loadFromServer();
+
+      // Увеличиваем серию для каждого атрибута (локально)
+      daily.attributes.forEach((attr) => {
+        characterStore.incrementAttributeStreak(attr);
+      });
+    } catch (error) {
+      console.error('Failed to grant daily reward:', error);
+      // Откатываем локальные изменения при ошибке
+      set((state) => ({
+        dailies: state.dailies.map((d) =>
+          d.id === id
+            ? {
+                ...d,
+                completed_today: false,
+                streak: oldStreak,
+                last_completed: oldLastCompleted,
+              }
+            : d
+        ),
+      }));
+    }
   },
 
   uncompleteDaily: (id) => {
