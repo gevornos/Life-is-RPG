@@ -34,6 +34,9 @@ class RewardsService {
       }
 
       // Делаем прямой fetch через proxy
+      console.log('Calling grant-reward with:', request);
+      console.log('Proxy URL:', `${PROXY_URL}/functions/v1/grant-reward`);
+
       const response = await fetch(`${PROXY_URL}/functions/v1/grant-reward`, {
         method: 'POST',
         headers: {
@@ -43,13 +46,19 @@ class RewardsService {
         body: JSON.stringify(request),
       });
 
+      console.log('Response status:', response.status);
+      console.log('Response headers:', JSON.stringify([...response.headers.entries()]));
+
+      const responseText = await response.text();
+      console.log('Response body:', responseText);
+
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Error granting reward:', response.status, errorText);
-        throw new Error(`Failed to grant reward: ${response.status} ${errorText}`);
+        console.error('Error granting reward:', response.status, responseText);
+        throw new Error(`Failed to grant reward: ${response.status} ${responseText}`);
       }
 
-      const data = await response.json();
+      const data = JSON.parse(responseText);
+      console.log('Parsed reward data:', data);
       return data as RewardResult;
     } catch (error) {
       console.error('Failed to grant reward:', error);

@@ -10,6 +10,7 @@ export const characterService = {
    */
   async fetchCharacter(): Promise<Character | null> {
     const { data: { user } } = await supabase.auth.getUser();
+    console.log('fetchCharacter: user =', user?.id);
     if (!user) return null;
 
     const { data, error } = await supabase
@@ -21,12 +22,14 @@ export const characterService = {
     if (error) {
       if (error.code === 'PGRST116') {
         // Персонаж не найден - это нормально
+        console.log('fetchCharacter: character not found (PGRST116)');
         return null;
       }
       console.error('Error fetching character:', error);
       throw error;
     }
 
+    console.log('fetchCharacter: character loaded:', data);
     return data as Character;
   },
 
