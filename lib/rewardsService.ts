@@ -2,6 +2,9 @@
 
 import { supabase } from './supabase';
 
+// Proxy URL для Edge Functions
+const PROXY_URL = 'https://proxy-server-two-omega.vercel.app';
+
 export interface GrantRewardRequest {
   action_type: 'habit' | 'daily' | 'task';
   difficulty?: 'easy' | 'medium' | 'hard' | 'positive' | 'negative';
@@ -30,19 +33,23 @@ class RewardsService {
         throw new Error('User not authenticated');
       }
 
-      // Вызываем Edge Function
-      const { data, error } = await supabase.functions.invoke('grant-reward', {
-        body: request,
+      // Делаем прямой fetch через proxy
+      const response = await fetch(`${PROXY_URL}/functions/v1/grant-reward`, {
+        method: 'POST',
         headers: {
-          Authorization: `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
         },
+        body: JSON.stringify(request),
       });
 
-      if (error) {
-        console.error('Error granting reward:', error);
-        throw error;
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Error granting reward:', response.status, errorText);
+        throw new Error(`Failed to grant reward: ${response.status} ${errorText}`);
       }
 
+      const data = await response.json();
       return data as RewardResult;
     } catch (error) {
       console.error('Failed to grant reward:', error);
