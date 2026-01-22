@@ -5,7 +5,7 @@ import { createClient } from "@supabase/supabase-js";
 const PROXY_URL = "https://proxy-server-two-omega.vercel.app";
 
 // Supabase credentials
-const SUPABASE_URL = PROXY_URL; // Используем proxy вместо прямого URL
+const SUPABASE_URL = "https://vrfabgvwrracgeirmptm.supabase.co"; // Реальный URL для JWT валидации
 const SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZyZmFiZ3Z3cnJhY2dlaXJtcHRtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkwMDQ2ODcsImV4cCI6MjA4NDU4MDY4N30.JjsQUvfMWhdtXXANdn-LIpDRB6oj5BAVgg-LlteJT64";
 
@@ -15,6 +15,14 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,
+  },
+  global: {
+    // Переопределяем fetch для перенаправления через proxy
+    fetch: (url, options = {}) => {
+      // Заменяем Supabase URL на proxy URL
+      const proxyUrl = url.toString().replace(SUPABASE_URL, PROXY_URL);
+      return fetch(proxyUrl, options);
+    },
   },
 });
 

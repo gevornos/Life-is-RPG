@@ -2,9 +2,6 @@
 
 import { supabase } from './supabase';
 
-// Proxy URL для Edge Functions
-const PROXY_URL = 'https://proxy-server-two-omega.vercel.app';
-
 export interface GrantRewardRequest {
   action_type: 'habit' | 'daily' | 'task';
   difficulty?: 'easy' | 'medium' | 'hard' | 'positive' | 'negative';
@@ -27,37 +24,18 @@ class RewardsService {
    */
   async grantReward(request: GrantRewardRequest): Promise<RewardResult> {
     try {
-      // Получаем токен текущего пользователя
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error('User not authenticated');
-      }
-
-      // Делаем прямой fetch через proxy
       console.log('Calling grant-reward with:', request);
-      console.log('Proxy URL:', `${PROXY_URL}/functions/v1/grant-reward`);
 
-      const response = await fetch(`${PROXY_URL}/functions/v1/grant-reward`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify(request),
+      // Используем supabase.functions.invoke - теперь он будет работать через proxy
+      const { data, error } = await supabase.functions.invoke('grant-reward', {
+        body: request,
       });
 
-      console.log('Response status:', response.status);
-      console.log('Response headers:', JSON.stringify([...response.headers.entries()]));
-
-      const responseText = await response.text();
-      console.log('Response body:', responseText);
-
-      if (!response.ok) {
-        console.error('Error granting reward:', response.status, responseText);
-        throw new Error(`Failed to grant reward: ${response.status} ${responseText}`);
+      if (error) {
+        console.error('Error granting reward:', error);
+        throw error;
       }
 
-      const data = JSON.parse(responseText);
       console.log('Parsed reward data:', data);
       return data as RewardResult;
     } catch (error) {
