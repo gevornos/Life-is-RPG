@@ -1,6 +1,6 @@
 # Supabase Configuration
 
-project_id = "your-project-id"
+project_id = "vrfabgvwrracgeirmptm"
 
 [api]
 enabled = true
@@ -11,20 +11,11 @@ max_rows = 1000
 
 [db]
 port = 54322
-major_version = 15
+major_version = 17
 
 [studio]
 enabled = true
 port = 54323
-
-[edge_functions]
-# Конфигурация Edge Functions
-enabled = true
-
-# Настройка расписания для функций
-[edge_functions.reset-daily-tasks]
-# Запускать каждый день в полночь UTC
-schedule = "0 0 * * *"
 
 [auth]
 enabled = true
